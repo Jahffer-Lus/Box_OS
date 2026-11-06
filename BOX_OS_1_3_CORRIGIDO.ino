@@ -746,20 +746,22 @@ void mostrarConfig() {
 }
 
 void desenharTecladoDataHora() {
-  for (byte row = 0; row < TECLADO_LINHAS; row++) {
-    byte total = quantidadeTeclasQwerty(row);
-    int xInicio = inicioLinhaQwerty(row);
-    int y = 62 + row * 13;
+  // Teclado numerico em grade 3x3: 1 a 9.
+  const int xTeclas[3] = {20, 55, 90};
+  const int yTeclas[3] = {59, 76, 93};
 
-    for (byte col = 0; col < total; col++) {
-      int x = xInicio + col * 12;
+  for (byte row = 0; row < 3; row++) {
+    for (byte col = 0; col < 3; col++) {
       bool ativo = (tecladoLinha == row && tecladoColuna == col);
-      retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
-      char tecla[2] = { lerTeclaQwerty(row, col), '\0' };
-      textoCentro(x + 5, y + 6, 1, ativo ? CYAN : WHITE, tecla);
+      int x = xTeclas[col];
+      int y = yTeclas[row];
+      retanguloArredondado(x, y, 25, 14, 3, ativo ? CYAN : DARK);
+      char tecla[2] = {(char)('1' + row * 3 + col), '\0'};
+      textoCentro(x + 12, y + 7, 1, ativo ? CYAN : WHITE, tecla);
     }
   }
 
+  // Acoes inferiores: DEL, 0, ENTER e SAIR.
   bool a0 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 0;
   bool a1 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 1;
   bool a2 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 2;
@@ -768,7 +770,7 @@ void desenharTecladoDataHora() {
   retanguloArredondado(3, 116, 25, 12, 2, a0 ? CYAN : DARK);
   textoCentro(15, 122, 1, a0 ? CYAN : WHITE, F("DEL"));
   retanguloArredondado(30, 116, 38, 12, 2, a1 ? CYAN : DARK);
-  textoCentro(49, 122, 1, a1 ? CYAN : WHITE, F("ESP"));
+  textoCentro(49, 122, 1, a1 ? CYAN : WHITE, F("0"));
   retanguloArredondado(70, 116, 30, 12, 2, a2 ? CYAN : DARK);
   textoCentro(85, 122, 1, a2 ? CYAN : WHITE, F("ENTER"));
   retanguloArredondado(102, 116, 24, 12, 2, a3 ? CYAN : DARK);
@@ -1772,7 +1774,7 @@ void selecionarConfig() {
       if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
       entradaDataHora[0] = '\0';
       tamanhoEntradaDataHora = 0;
-      tecladoLinha = 3;
+      tecladoLinha = 0;
       tecladoColuna = 0;
       mostrarAjusteData();
       break;
@@ -1781,7 +1783,7 @@ void selecionarConfig() {
       if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
       entradaDataHora[0] = '\0';
       tamanhoEntradaDataHora = 0;
-      tecladoLinha = 3;
+      tecladoLinha = 0;
       tecladoColuna = 0;
       mostrarAjusteHora();
       break;
@@ -1864,8 +1866,11 @@ void selecionarTeclaDataHora() {
         somApagar();
       }
     } else if (tecladoColuna == 1) {
-      // ESPACO nao e usado em campos numericos.
-      somErro();
+      byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
+      if (tamanhoEntradaDataHora < limite) {
+        entradaDataHora[tamanhoEntradaDataHora++] = '0';
+        entradaDataHora[tamanhoEntradaDataHora] = '\0';
+      }
     } else if (tecladoColuna == 2) {
       confirmarDataHora();
       return;
@@ -1873,15 +1878,13 @@ void selecionarTeclaDataHora() {
       mostrarConfig();
       return;
     }
-  } else if (tecladoLinha == 3) {
-    char tecla = lerTeclaQwerty(tecladoLinha, tecladoColuna);
+  } else if (tecladoLinha < 3 && tecladoColuna < 3) {
+    char tecla = '1' + tecladoLinha * 3 + tecladoColuna;
     byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
-    if (tecla >= '0' && tecla <= '9' && tamanhoEntradaDataHora < limite) {
+    if (tamanhoEntradaDataHora < limite) {
       entradaDataHora[tamanhoEntradaDataHora++] = tecla;
       entradaDataHora[tamanhoEntradaDataHora] = '\0';
     }
-  } else {
-    somErro();
   }
 
   if (tela == AJUSTAR_DATA) mostrarAjusteData();
@@ -1895,7 +1898,65 @@ void selecionarTeclaDataHora() {
 void atualizarNavegacao() {
   if (millis() - ultimoMovimento < 220) return;
 
-  if (tela == TERM_EDIT || tela == AJUSTAR_DATA || tela == AJUSTAR_HORA) {
+  if (tela == AJUSTAR_DATA || tela == AJUSTAR_HORA) {
+    int dx = lerDirecaoX();
+    int dy = lerDirecaoY();
+    if (dx == 0 && dy == 0) return;
+
+    if (tecladoLinha == TECLADO_LINHA_ACOES) {
+      if (dx != 0) {
+        int novaColuna = (int)tecladoColuna + dx;
+        if (novaColuna < 0) novaColuna = 0;
+        if (novaColuna > 3) novaColuna = 3;
+        tecladoColuna = novaColuna;
+      }
+      if (dy < 0) {
+        const int centrosAcoes[4] = {15, 49, 85, 114};
+        int centro = centrosAcoes[tecladoColuna];
+        int melhor = 0;
+        int menor = 32767;
+        const int centrosNumeros[3] = {32, 67, 102};
+        for (byte i = 0; i < 3; i++) {
+          int distancia = abs(centrosNumeros[i] - centro);
+          if (distancia < menor) { menor = distancia; melhor = i; }
+        }
+        tecladoLinha = 2;
+        tecladoColuna = melhor;
+      }
+    } else {
+      if (dx != 0) {
+        int novaColuna = (int)tecladoColuna + dx;
+        if (novaColuna < 0) novaColuna = 0;
+        if (novaColuna > 2) novaColuna = 2;
+        tecladoColuna = novaColuna;
+      }
+      if (dy < 0 && tecladoLinha > 0) {
+        tecladoLinha--;
+      } else if (dy > 0 && tecladoLinha < 2) {
+        tecladoLinha++;
+      } else if (dy > 0 && tecladoLinha == 2) {
+        const int centrosAcoes[4] = {15, 49, 85, 114};
+        const int centrosNumeros[3] = {32, 67, 102};
+        int centro = centrosNumeros[tecladoColuna];
+        int melhor = 0;
+        int menor = 32767;
+        for (byte i = 0; i < 4; i++) {
+          int distancia = abs(centrosAcoes[i] - centro);
+          if (distancia < menor) { menor = distancia; melhor = i; }
+        }
+        tecladoLinha = TECLADO_LINHA_ACOES;
+        tecladoColuna = melhor;
+      }
+    }
+
+    ultimoMovimento = millis();
+    somNavegacao();
+    if (tela == AJUSTAR_DATA) mostrarAjusteData();
+    else mostrarAjusteHora();
+    return;
+  }
+
+  if (tela == TERM_EDIT) {
     int dx = lerDirecaoX();
     int dy = lerDirecaoY();
     if (dx == 0 && dy == 0) return;
