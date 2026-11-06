@@ -279,10 +279,9 @@ void iniciarRTC() {
   digitalWrite(RTC_CE, LOW);
   digitalWrite(RTC_SCLK, LOW);
 
-  // O DS1302 pode estar zerado na primeira utilizacao.
-  // Mantemos a tela de ajuste acessivel para o usuario acertar o relogio.
-  rtcDisponivel = true;
-  if (!rtcLerDataHora(dataHoraAtual)) {
+  // Considera o RTC disponivel somente se a leitura retornar uma data valida.
+  rtcDisponivel = rtcLerDataHora(dataHoraAtual);
+  if (!rtcDisponivel) {
     dataHoraAtual.segundo = 0;
     dataHoraAtual.minuto = 0;
     dataHoraAtual.hora = 12;
@@ -1662,8 +1661,9 @@ void iniciarDino() {
   pontos = 0;
   obstaculoX = 120;
 
+  // O obstaculo e a tela atualizam juntos, em intervalos regulares.
   inicioObstaculo = millis();
-  ultimaFrameDino = 0;
+  ultimaFrameDino = millis();
 
   desenharDino();
 }
@@ -1676,49 +1676,48 @@ void atualizarDino() {
     return;
   }
 
+  unsigned long agora = millis();
   int y = analogRead(JOY_Y);
 
   if (y < centroY - LIMITE_JOYSTICK && !pulando) {
     pulando = true;
-    inicioPulo = millis();
+    inicioPulo = agora;
     somPulo();
   }
 
-  if (pulando && millis() - inicioPulo > 650) {
+  if (pulando && agora - inicioPulo > 650) {
     pulando = false;
   }
 
-  if (obstaculoX > -15) {
-    obstaculoX -= 3;
-  } else {
-    obstaculoX = 120;
-    pontos++;
-  }
+  // A velocidade nao depende mais da velocidade do loop do Arduino.
+  if (agora - ultimaFrameDino >= 120) {
+    ultimaFrameDino = agora;
 
-  if (
-    obstaculoX <= 28 &&
-    obstaculoX >= 12 &&
-    !pulando
-  ) {
-    gameOver = true;
-    somGameOver();
+    if (obstaculoX > -15) {
+      obstaculoX -= 3;
+    } else {
+      obstaculoX = 120;
+      pontos++;
+    }
 
-    limpar();
-    texto(20, 48, 3, CYAN, F("GAME OVER"));
+    if (obstaculoX <= 28 && obstaculoX >= 12 && !pulando) {
+      gameOver = true;
+      somGameOver();
 
-    char score[15];
-    snprintf_P(score, sizeof(score), PSTR("PONTOS: %d"), pontos);
-    texto(37, 83, 2, WHITE, score);
+      limpar();
+      texto(20, 48, 3, CYAN, F("GAME OVER"));
 
-    texto(12, 130, 1, GRAY, F("SW: VOLTAR"));
-    return;
-  }
+      char score[15];
+      snprintf_P(score, sizeof(score), PSTR("PONTOS: %d"), pontos);
+      texto(37, 83, 2, WHITE, score);
+      texto(12, 130, 1, GRAY, F("SW: VOLTAR"));
+      return;
+    }
 
-  if (millis() - ultimaFrameDino >= 120) {
-    ultimaFrameDino = millis();
     desenharDino();
   }
 
+  // O botao SW sai do jogo e retorna a lista de jogos.
   if (digitalRead(JOY_SW) == LOW) {
     delay(30);
     if (digitalRead(JOY_SW) == LOW) {
@@ -1737,14 +1736,14 @@ void selecionarConfig() {
     case 0: mostrarAjusteFonte(); break;
     case 1: mostrarAjusteIcones(); break;
     case 2:
-      rtcDisponivel = true;
-      if (!rtcLerDataHora(dataHoraEdicao)) dataHoraEdicao = dataHoraAtual;
+      rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
+      if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
       campoDataHora = 0;
       mostrarAjusteData();
       break;
     case 3:
-      rtcDisponivel = true;
-      if (!rtcLerDataHora(dataHoraEdicao)) dataHoraEdicao = dataHoraAtual;
+      rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
+      if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
       campoDataHora = 0;
       mostrarAjusteHora();
       break;
@@ -1944,6 +1943,16 @@ void atualizarNavegacao() {
     }
     ultimoMovimento = millis();
     mostrarLeitorArquivo();
+    return;
+  }
+
+  // Na tela JOGOS, qualquer movimento do joystick inicia o DINO_RUN.
+  if (tela == JOGOS) {
+    int direcaoJogo = lerDirecao();
+    if (direcaoJogo == 0) return;
+    ultimoMovimento = millis();
+    somNavegacao();
+    iniciarDino();
     return;
   }
 
