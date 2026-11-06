@@ -53,7 +53,7 @@ const __FlashStringHelper *iconeApp(byte indice) {
     case 0: return F("🎮");
     case 1: return F("💻");
     case 2: return F("📊");
-    case 3: return F("⚙️");
+    case 3: return F(" ⚙️");
     default: return F("📁");
   }
 }
@@ -1052,8 +1052,10 @@ void mostrarMonitor() {
   texto(5, 5, 3, CYAN, F("MONITOR"));
   linha(5, 23, 123, 23, GRAY);
 
-  textoIcone(9, 47, tamanhoIcone, WHITE, F("📊"));
-  texto(9, 75, 1, GRAY, F("TEMPO ATIVO:"));
+  desenharBarraArmazenamento(true);
+
+  textoIcone(9, 57, tamanhoIcone, WHITE, F("📊"));
+  texto(9, 76, 1, GRAY, F("TEMPO ATIVO:"));
 
   atualizarMonitor();
   texto(5, 151, 1, CYAN, F("SW: VOLTAR"));
@@ -1064,6 +1066,8 @@ void mostrarMonitor() {
 // =============================================
 
 void atualizarMonitor() {
+  desenharBarraArmazenamento(true);
+
   unsigned long segundos = (millis() - inicioSistema) / 1000UL;
 
   unsigned int horas = segundos / 3600UL;
@@ -1078,7 +1082,6 @@ void atualizarMonitor() {
     horas, minutos, seg
   );
 
-  // Apaga a area do horario
   texto(9, 98, 3, CYAN, horario);
 }
 
@@ -1147,7 +1150,8 @@ void carregarArquivo(byte slot) {
 }
 
 void apagarArquivo(byte slot) {
-  if (slot < 2 || slot >= FILE_TOTAL_SLOTS) return;
+  // O slot 1 continua reservado para CREDITOS.TXT.
+  if (slot == 1 || slot >= FILE_TOTAL_SLOTS) return;
   EEPROM.update(enderecoSlot(slot), 0);
 }
 
@@ -1174,35 +1178,38 @@ void escreverArquivoFlash(byte slot, PGM_P nome, PGM_P conteudo, uint16_t tamanh
 }
 
 void inicializarBoxFiles() {
-  bool formatoValido =
+  bool assinaturaValida =
     EEPROM.read(0) == FILE_MAGIC_0 &&
     EEPROM.read(1) == FILE_MAGIC_1 &&
-    EEPROM.read(2) == FILE_MAGIC_2 &&
-    EEPROM.read(3) == 1;
+    EEPROM.read(2) == FILE_MAGIC_2;
 
-  if (formatoValido) return;
+  byte versaoFormato = EEPROM.read(3);
 
-  // Primeira inicializacao: cria os dois documentos protegidos.
+  // Migracao segura: libera o slot 0, antes ocupado pelo LEIA-ME.
+  // CREDITOS.TXT e os arquivos do usuario sao preservados.
+  if (assinaturaValida && versaoFormato == 1) {
+    EEPROM.update(enderecoSlot(0), 0);
+    EEPROM.update(3, 2);
+    return;
+  }
+
+  if (assinaturaValida && versaoFormato == 2) return;
+
+  // Instalacao nova: somente CREDITOS.TXT ocupa um slot reservado.
   EEPROM.update(0, FILE_MAGIC_0);
   EEPROM.update(1, FILE_MAGIC_1);
   EEPROM.update(2, FILE_MAGIC_2);
-  EEPROM.update(3, 1);
+  EEPROM.update(3, 2);
   for (byte i = 4; i < FILE_HEADER_SIZE; i++) EEPROM.update(i, 0);
 
   for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
     EEPROM.update(enderecoSlot(slot), 0);
   }
 
-  static const char LEIA_ME[] PROGMEM =
-    "JOGOS: DINO_RUN. Joystick pula e SW sai. TERMINAL: em construcao. "
-    "MONITOR: tempo ligado. CONFIG: ajusta fonte e icones. "
-    "BOX FILES: cria, le, edita e apaga textos.";
-
   static const char CREDITOS[] PROGMEM =
     "BOX OS. Criado por Jahffer. Assistencia de programacao: "
     "ChatGPT (OpenAI). Obrigado por usar o BOX OS!";
 
-  escreverArquivoFlash(0, PSTR("LEIA-ME.TXT"), LEIA_ME, sizeof(LEIA_ME) - 1);
   escreverArquivoFlash(1, PSTR("CREDITOS.TXT"), CREDITOS, sizeof(CREDITOS) - 1);
 }
 
@@ -1213,37 +1220,51 @@ void atualizarListaArquivos() {
   for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
     if (arquivoExiste(slot)) {
       indicesArquivos[qtdArquivos++] = slot;
-    } else if (slot >= 2) {
+    } else if (slot != 1) {
       temEspacoArquivo = true;
     }
   }
 }
 
 
-void desenharBarraArmazenamento() {
-  // O BOX FILES usa cinco slots fixos de 200 bytes na EEPROM.
-  // Um slot ativo conta como 20% da capacidade reservada.
-  byte usados = 0;
-  for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
-    if (arquivoExiste(slot)) usados++;
-  }
+// Cada arquivo pessoal ocupa um slot fixo de 200 bytes.
+// O slot 1 fica reservado para CREDITOS.TXT.
+void calcularArmazenamento(uint16_t &usados, uint16_t &capacidade) {
+  usados = 0;
+  capacidade = (FILE_TOTAL_SLOTS - 1) * FILE_SLOT_SIZE;
 
-  byte percentual = (usados * 100) / FILE_TOTAL_SLOTS;
+  for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
+    if (slot == 1) continue;
+    if (arquivoExiste(slot)) usados += FILE_SLOT_SIZE;
+  }
+}
+
+void desenharBarraArmazenamento(bool mostrarDetalhes) {
+  uint16_t usados = 0;
+  uint16_t capacidade = 0;
+  calcularArmazenamento(usados, capacidade);
+
+  byte percentual = capacidade ? (usados * 100UL) / capacidade : 0;
   const __FlashStringHelper *cor = GREEN;
   if (percentual >= 90) cor = RED;
   else if (percentual >= 70) cor = ORANGE;
   else if (percentual >= 50) cor = YELLOW;
 
-  texto(5, 24, 1, GRAY, F("USADO"));
+  texto(5, 24, 1, GRAY, F("USO EEPROM"));
   char porcentagem[6];
   snprintf_P(porcentagem, sizeof(porcentagem), PSTR("%u%%"), percentual);
   texto(96, 24, 1, cor, porcentagem);
 
-  // Fundo da barra e preenchimento proporcional ao uso real dos slots.
   retangulo(5, 30, 118, 7, DARK);
-  int larguraPreenchida = (118L * usados) / FILE_TOTAL_SLOTS;
+  int larguraPreenchida = (118L * usados) / capacidade;
   if (larguraPreenchida > 0) {
     retangulo(5, 30, larguraPreenchida, 7, cor);
+  }
+
+  if (mostrarDetalhes) {
+    char memoria[20];
+    snprintf_P(memoria, sizeof(memoria), PSTR("%u/%u BYTES"), usados, capacidade);
+    texto(5, 41, 1, WHITE, memoria);
   }
 }
 
@@ -1255,7 +1276,7 @@ void mostrarListaArquivos() {
   // Cabecalho fixo: titulo, barra de armazenamento e depois a lista.
   texto(5, 3, 3, CYAN, F("BOX FILES"));
   linha(5, 20, 123, 20, GRAY);
-  desenharBarraArmazenamento();
+  desenharBarraArmazenamento(false);
 
   // Arquivos + opcao NOVO (se houver espaco) + opcao VOLTAR.
   byte totalItens = qtdArquivos + (temEspacoArquivo ? 1 : 0) + 1;
@@ -1307,7 +1328,8 @@ void mostrarListaArquivos() {
 
 void criarArquivoNovo() {
   byte slotLivre = 255;
-  for (byte slot = 2; slot < FILE_TOTAL_SLOTS; slot++) {
+  for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
+    if (slot == 1) continue;
     if (!arquivoExiste(slot)) {
       slotLivre = slot;
       break;
@@ -1325,7 +1347,7 @@ void criarArquivoNovo() {
   }
 
   char nome[FILE_NAME_SIZE + 1];
-  snprintf_P(nome, sizeof(nome), PSTR("NOVO%02u.TXT"), slotLivre - 1);
+  snprintf_P(nome, sizeof(nome), PSTR("NOVO%02u.TXT"), slotLivre);
   escreverArquivo(slotLivre, nome, "", 0);
   somSucesso();
   carregarArquivo(slotLivre);
@@ -1389,7 +1411,7 @@ void mostrarLeitorArquivo() {
   snprintf_P(paginaTexto, sizeof(paginaTexto), PSTR("PAG %u/%u"), paginaArquivo + 1, totalPaginas);
   texto(5, 124, 1, GRAY, paginaTexto);
 
-  if (arquivoSlotAtual < 2) {
+  if (arquivoSlotAtual == 1) {
     texto(5, 143, 1, CYAN, F("SW: VOLTAR"));
   } else {
     const __FlashStringHelper *acao = F("VOLTAR");
@@ -1644,7 +1666,7 @@ void selecionarTeclaEditor() {
 }
 
 void executarAcaoLeitor() {
-  if (arquivoSlotAtual < 2) {
+  if (arquivoSlotAtual == 1) {
     mostrarListaArquivos();
     return;
   }
@@ -2107,7 +2129,7 @@ void atualizarNavegacao() {
     int dx = lerDirecaoX();
     int dy = lerDirecaoY();
     if (dx == 0 && dy == 0) return;
-    if (arquivoSlotAtual >= 2 && dx != 0) {
+    if (arquivoSlotAtual != 1 && dx != 0) {
       acaoArquivo = (acaoArquivo + 4 + dx) % 4;
     }
     if (dy < 0 && paginaArquivo > 0) paginaArquivo--;
