@@ -124,6 +124,7 @@ byte tamanhoEntradaDataHora = 0;
 char terminalEntrada[17] = "";
 byte terminalTamanho = 0;
 char terminalResposta[25] = "DIGITE HELP";
+bool terminalTecladoMinimizado = false;
 
 int centroX = 512;
 int centroY = 512;
@@ -917,6 +918,7 @@ void abrirAplicativo() {
       terminalTamanho = 0;
       tecladoLinha = 0;
       tecladoColuna = 0;
+      terminalTecladoMinimizado = false;
       strcpy(terminalResposta, "DIGITE HELP");
       mostrarTerminal();
       break;
@@ -960,6 +962,14 @@ void mostrarTerminal() {
   texto(32, 27, 1, WHITE, terminalEntrada);
   texto(5, 43, 1, CYAN, terminalResposta);
 
+  // Quando minimizado, deixa a area livre para acompanhar os resultados.
+  if (terminalTecladoMinimizado) {
+    textoCentro(64, 82, 2, CYAN, F("TECLADO OCULTO"));
+    textoCentro(64, 106, 1, WHITE, F("SW: MOSTRAR TECLADO"));
+    texto(5, 149, 1, GRAY, F("RESULTADOS DO TERMINAL"));
+    return;
+  }
+
   for (byte row = 0; row < 4; row++) {
     byte total = quantidadeTeclasQwerty(row);
     int xInicio = inicioLinhaQwerty(row);
@@ -977,6 +987,7 @@ void mostrarTerminal() {
   bool a1 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 1;
   bool a2 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 2;
   bool a3 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 3;
+  bool a4 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 4;
   retanguloArredondado(3, 116, 25, 12, 2, a0 ? CYAN : DARK);
   textoCentro(15, 122, 1, a0 ? CYAN : WHITE, F("DEL"));
   retanguloArredondado(30, 116, 38, 12, 2, a1 ? CYAN : DARK);
@@ -985,8 +996,11 @@ void mostrarTerminal() {
   textoCentro(85, 122, 1, a2 ? CYAN : WHITE, F("ENTER"));
   retanguloArredondado(102, 116, 24, 12, 2, a3 ? CYAN : DARK);
   textoCentro(114, 122, 1, a3 ? CYAN : WHITE, F("SAIR"));
-  texto(5, 137, 1, GRAY, F("JOY: MOVER  SW: USAR"));
-  texto(5, 149, 1, CYAN, F("HELP TIME DATE UPTIME"));
+
+  // Botao extra em uma segunda linha para caber o nome completo.
+  retanguloArredondado(3, 132, 123, 12, 2, a4 ? CYAN : DARK);
+  textoCentro(64, 138, 1, a4 ? CYAN : WHITE, F("MINIMIZAR"));
+  texto(5, 149, 1, GRAY, F("JOY: MOVER  SW: SELECIONAR"));
 }
 
 void executarComandoTerminal() {
@@ -1020,6 +1034,15 @@ void executarComandoTerminal() {
 }
 
 void selecionarTeclaTerminal() {
+  // Com o teclado oculto, SW apenas o mostra novamente.
+  if (terminalTecladoMinimizado) {
+    terminalTecladoMinimizado = false;
+    tecladoLinha = 0;
+    tecladoColuna = 0;
+    mostrarTerminal();
+    return;
+  }
+
   if (tecladoLinha == TECLADO_LINHA_ACOES) {
     if (tecladoColuna == 0) {
       if (terminalTamanho > 0) terminalEntrada[--terminalTamanho] = '\0';
@@ -1030,18 +1053,21 @@ void selecionarTeclaTerminal() {
       }
     } else if (tecladoColuna == 2) {
       executarComandoTerminal();
-    } else {
+    } else if (tecladoColuna == 3) {
       mostrarMenu();
       return;
+    } else if (tecladoColuna == 4) {
+      terminalTecladoMinimizado = true;
     }
   } else {
     char tecla = lerTeclaQwerty(tecladoLinha, tecladoColuna);
     if (tecla && terminalTamanho < 16) {
       terminalEntrada[terminalTamanho++] = tecla;
       terminalEntrada[terminalTamanho] = '\0';
+      // Somente a selecao efetiva de uma letra gera clique.
+      somClique();
     }
   }
-  somClique();
   mostrarTerminal();
 }
 
@@ -2010,6 +2036,8 @@ void atualizarNavegacao() {
   }
 
   if (tela == TERM_EDIT) {
+    if (terminalTecladoMinimizado) return;
+
     int dx = lerDirecaoX();
     int dy = lerDirecaoY();
     if (dx == 0 && dy == 0) return;
@@ -2017,11 +2045,11 @@ void atualizarNavegacao() {
       if (dx != 0) {
         int nc = (int)tecladoColuna + dx;
         if (nc < 0) nc = 0;
-        if (nc > 3) nc = 3;
+        if (nc > 4) nc = 4;
         tecladoColuna = nc;
       }
       if (dy < 0) {
-        const int centros[4] = {15, 49, 85, 114};
+        const int centros[5] = {15, 49, 85, 114, 64};
         int centro = centros[tecladoColuna];
         tecladoLinha = 3;
         tecladoColuna = colunaQwertyMaisProxima(3, centro);
@@ -2044,10 +2072,10 @@ void atualizarNavegacao() {
         tecladoColuna = colunaQwertyMaisProxima(tecladoLinha, centro);
       } else if (dy > 0 && tecladoLinha == 3) {
         int centro = centroTeclaQwerty(tecladoLinha, tecladoColuna);
-        const int centros[4] = {15, 49, 85, 114};
+        const int centros[5] = {15, 49, 85, 114, 64};
         byte melhor = 0;
         int menor = 32767;
-        for (byte i = 0; i < 4; i++) {
+        for (byte i = 0; i < 5; i++) {
           int d = abs(centros[i] - centro);
           if (d < menor) { menor = d; melhor = i; }
         }
@@ -2056,12 +2084,8 @@ void atualizarNavegacao() {
       }
     }
     ultimoMovimento = millis();
-    somNavegacao();
-    if (tela == TERM_EDIT) mostrarTerminal();
-    else if (tela == AJUSTAR_DATA) mostrarAjusteData();
-    else mostrarAjusteHora();
-    ultimoMovimento = millis();
-    somNavegacao();
+    // Navegar pelo teclado nao emite som; o clique ocorre ao selecionar uma letra.
+    mostrarTerminal();
     return;
   }
 
