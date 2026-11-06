@@ -122,7 +122,10 @@ struct DataHoraRTC {
 
 DataHoraRTC dataHoraAtual;
 DataHoraRTC dataHoraEdicao;
+DataHoraRTC dataHoraMenuAnterior;
 bool rtcDisponivel = false;
+bool relogioMenuInicializado = false;
+bool relogioMenuDisponivel = false;
 char entradaDataHora[11] = "";
 byte tamanhoEntradaDataHora = 0;
 
@@ -688,12 +691,27 @@ void mostrarDataHoraMenu() {
   texto(5, 25, 1, WHITE, dataHoraTexto);
 }
 
+bool dataHoraMenuMudou(const DataHoraRTC &a, const DataHoraRTC &b) {
+  return a.segundo != b.segundo ||
+         a.minuto != b.minuto ||
+         a.hora != b.hora ||
+         a.dia != b.dia ||
+         a.mes != b.mes ||
+         a.ano != b.ano ||
+         a.diaSemana != b.diaSemana;
+}
+
 void mostrarMenu() {
   tela = MENU;
   limpar();
 
   texto(5, 3, 3, CYAN, F("APLICATIVOS"));
   mostrarDataHoraMenu();
+
+  // Guarda o horario exibido para redesenhar somente quando ele mudar.
+  relogioMenuDisponivel = rtcLerDataHora(dataHoraMenuAnterior);
+  relogioMenuInicializado = true;
+
   linha(5, 38, 123, 38, GRAY);
 
   for (byte i = 0; i < TOTAL_APPS; i++) {
@@ -2357,9 +2375,26 @@ void loop() {
     }
   }
 
-  if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 1000) {
+  // Verifica o RTC frequentemente, mas so redesenha o menu quando
+  // algum numero da data/hora realmente mudar.
+  if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 100) {
     ultimaAtualizacaoRelogio = millis();
-    mostrarDataHoraMenu();
+
+    DataHoraRTC horarioAtual;
+    bool horarioDisponivel = rtcLerDataHora(horarioAtual);
+
+    bool mudou = !relogioMenuInicializado ||
+                 (horarioDisponivel != relogioMenuDisponivel);
+
+    if (horarioDisponivel && relogioMenuDisponivel &&
+        dataHoraMenuMudou(horarioAtual, dataHoraMenuAnterior)) {
+      mudou = true;
+    }
+
+    if (mudou) {
+      // Atualiza o quadro inteiro, como cada frame da animacao de inicio.
+      mostrarMenu();
+    }
   }
 
   atualizarNavegacao();
