@@ -1937,6 +1937,7 @@ void selecionarTeclaDataHora() {
           byte posicao = strlen(entradaDataHora);
           if (posicao > 0 && entradaDataHora[posicao - 1] == '/') posicao--;
           if (posicao > 0) posicao--;
+          if (posicao > 0 && entradaDataHora[posicao - 1] == '/') posicao--;
           entradaDataHora[posicao] = '\0';
         } else {
           entradaDataHora[--tamanhoEntradaDataHora] = '\0';
