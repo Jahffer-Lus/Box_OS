@@ -113,7 +113,8 @@ struct DataHoraRTC {
 DataHoraRTC dataHoraAtual;
 DataHoraRTC dataHoraEdicao;
 bool rtcDisponivel = false;
-byte campoDataHora = 0;
+char entradaDataHora[9] = "";
+byte tamanhoEntradaDataHora = 0;
 
 // Terminal: entrada e ultima resposta.
 char terminalEntrada[17] = "";
@@ -744,48 +745,76 @@ void mostrarConfig() {
   texto(5, 148, 1, CYAN, F("SW: SELECIONAR"));
 }
 
+void desenharTecladoDataHora() {
+  for (byte row = 0; row < TECLADO_LINHAS; row++) {
+    byte total = quantidadeTeclasQwerty(row);
+    int xInicio = inicioLinhaQwerty(row);
+    int y = 62 + row * 13;
+
+    for (byte col = 0; col < total; col++) {
+      int x = xInicio + col * 12;
+      bool ativo = (tecladoLinha == row && tecladoColuna == col);
+      retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
+      char tecla[2] = { lerTeclaQwerty(row, col), '\\0' };
+      textoCentro(x + 5, y + 6, 1, ativo ? CYAN : WHITE, tecla);
+    }
+  }
+
+  bool a0 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 0;
+  bool a1 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 1;
+  bool a2 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 2;
+  bool a3 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 3;
+
+  retanguloArredondado(3, 116, 25, 12, 2, a0 ? CYAN : DARK);
+  textoCentro(15, 122, 1, a0 ? CYAN : WHITE, F("DEL"));
+  retanguloArredondado(30, 116, 38, 12, 2, a1 ? CYAN : DARK);
+  textoCentro(49, 122, 1, a1 ? CYAN : WHITE, F("ESP"));
+  retanguloArredondado(70, 116, 30, 12, 2, a2 ? CYAN : DARK);
+  textoCentro(85, 122, 1, a2 ? CYAN : WHITE, F("ENTER"));
+  retanguloArredondado(102, 116, 24, 12, 2, a3 ? CYAN : DARK);
+  textoCentro(114, 122, 1, a3 ? CYAN : WHITE, F("SAIR"));
+}
+
 void mostrarAjusteData() {
   tela = AJUSTAR_DATA;
   limpar();
-  texto(5, 5, 2, CYAN, F("AJUSTAR DATA"));
-  linha(5, 23, 123, 23, GRAY);
+  texto(5, 4, 2, CYAN, F("AJUSTAR DATA"));
+  linha(5, 21, 123, 21, GRAY);
+
   if (!rtcDisponivel) {
     texto(5, 55, 1, WHITE, F("RTC NAO DETECTADO"));
     texto(5, 75, 1, GRAY, F("VERIFIQUE DAT/CLK/RST"));
-  } else {
-    char data[12];
-    snprintf_P(data, sizeof(data), PSTR("%02u/%02u/20%02u"),
-      dataHoraEdicao.dia, dataHoraEdicao.mes, dataHoraEdicao.ano);
-    textoCentro(64, 65, 2, WHITE, data);
-    int xCampo = campoDataHora == 0 ? 24 : (campoDataHora == 1 ? 64 : 104);
-    linha(xCampo - 9, 79, xCampo + 9, 79, CYAN);
-    texto(5, 112, 1, GRAY, F("ESQ/DIR: CAMPO"));
-    texto(5, 124, 1, GRAY, F("CIMA/BAIXO: MUDAR"));
-    texto(5, 145, 1, CYAN, F("SW: SALVAR"));
+    texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
+    return;
   }
-  if (!rtcDisponivel) texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
+
+  texto(5, 27, 1, GRAY, F("DDMMAAAA:"));
+  texto(62, 27, 1, WHITE, entradaDataHora);
+  texto(5, 43, 1, GRAY, F("DIGITE 8 NUMEROS"));
+  desenharTecladoDataHora();
+  texto(5, 137, 1, GRAY, F("JOY: MOVER  SW: USAR"));
+  texto(5, 149, 1, CYAN, F("ENTER SALVA  DEL APAGA"));
 }
 
 void mostrarAjusteHora() {
   tela = AJUSTAR_HORA;
   limpar();
-  texto(5, 5, 2, CYAN, F("AJUSTAR HORA"));
-  linha(5, 23, 123, 23, GRAY);
+  texto(5, 4, 2, CYAN, F("AJUSTAR HORA"));
+  linha(5, 21, 123, 21, GRAY);
+
   if (!rtcDisponivel) {
     texto(5, 55, 1, WHITE, F("RTC NAO DETECTADO"));
     texto(5, 75, 1, GRAY, F("VERIFIQUE DAT/CLK/RST"));
     texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
-  } else {
-    char hora[10];
-    snprintf_P(hora, sizeof(hora), PSTR("%02u:%02u:%02u"),
-      dataHoraEdicao.hora, dataHoraEdicao.minuto, dataHoraEdicao.segundo);
-    textoCentro(64, 65, 2, WHITE, hora);
-    int xCampo = campoDataHora == 0 ? 34 : (campoDataHora == 1 ? 64 : 94);
-    linha(xCampo - 9, 79, xCampo + 9, 79, CYAN);
-    texto(5, 112, 1, GRAY, F("ESQ/DIR: CAMPO"));
-    texto(5, 124, 1, GRAY, F("CIMA/BAIXO: MUDAR"));
-    texto(5, 145, 1, CYAN, F("SW: SALVAR"));
+    return;
   }
+
+  texto(5, 27, 1, GRAY, F("HHMMSS:"));
+  texto(62, 27, 1, WHITE, entradaDataHora);
+  texto(5, 43, 1, GRAY, F("DIGITE 6 NUMEROS"));
+  desenharTecladoDataHora();
+  texto(5, 137, 1, GRAY, F("JOY: MOVER  SW: USAR"));
+  texto(5, 149, 1, CYAN, F("ENTER SALVA  DEL APAGA"));
 }
 
 void mostrarAjusteFonte() {
@@ -1741,13 +1770,19 @@ void selecionarConfig() {
     case 2:
       rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
       if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
-      campoDataHora = 0;
+      entradaDataHora[0] = '\\0';
+      tamanhoEntradaDataHora = 0;
+      tecladoLinha = 3;
+      tecladoColuna = 0;
       mostrarAjusteData();
       break;
     case 3:
       rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
       if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
-      campoDataHora = 0;
+      entradaDataHora[0] = '\\0';
+      tamanhoEntradaDataHora = 0;
+      tecladoLinha = 3;
+      tecladoColuna = 0;
       mostrarAjusteHora();
       break;
     case 4: desligarBOX(); break;
@@ -1756,44 +1791,101 @@ void selecionarConfig() {
   }
 }
 
-void alterarCampoDataHora(int direcao) {
-  if (tela == AJUSTAR_DATA) {
-    if (campoDataHora == 0) {
-      int v = (int)dataHoraEdicao.dia + direcao;
-      if (v < 1) v = 31;
-      if (v > 31) v = 1;
-      dataHoraEdicao.dia = v;
-    } else if (campoDataHora == 1) {
-      int v = (int)dataHoraEdicao.mes + direcao;
-      if (v < 1) v = 12;
-      if (v > 12) v = 1;
-      dataHoraEdicao.mes = v;
-    } else {
-      int v = (int)dataHoraEdicao.ano + direcao;
-      if (v < 0) v = 99;
-      if (v > 99) v = 0;
-      dataHoraEdicao.ano = v;
-    }
-    mostrarAjusteData();
-  } else {
-    if (campoDataHora == 0) {
-      int v = (int)dataHoraEdicao.hora + direcao;
-      if (v < 0) v = 23;
-      if (v > 23) v = 0;
-      dataHoraEdicao.hora = v;
-    } else if (campoDataHora == 1) {
-      int v = (int)dataHoraEdicao.minuto + direcao;
-      if (v < 0) v = 59;
-      if (v > 59) v = 0;
-      dataHoraEdicao.minuto = v;
-    } else {
-      int v = (int)dataHoraEdicao.segundo + direcao;
-      if (v < 0) v = 59;
-      if (v > 59) v = 0;
-      dataHoraEdicao.segundo = v;
-    }
-    mostrarAjusteHora();
+bool dataValida(byte dia, byte mes, byte ano) {
+  if (mes < 1 || mes > 12 || dia < 1) return false;
+  byte diasMes[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+  bool bissexto = ((ano % 4) == 0);
+  if (bissexto) diasMes[1] = 29;
+  return dia <= diasMes[mes - 1];
+}
+
+void confirmarDataHora() {
+  byte esperado = (tela == AJUSTAR_DATA) ? 8 : 6;
+  if (tamanhoEntradaDataHora != esperado) {
+    somErro();
+    texto(5, 43, 1, CYAN, F("QUANTIDADE INCORRETA"));
+    delay(650);
+    if (tela == AJUSTAR_DATA) mostrarAjusteData();
+    else mostrarAjusteHora();
+    return;
   }
+
+  if (tela == AJUSTAR_DATA) {
+    byte dia = (entradaDataHora[0] - '0') * 10 + (entradaDataHora[1] - '0');
+    byte mes = (entradaDataHora[2] - '0') * 10 + (entradaDataHora[3] - '0');
+    int anoCompleto = (entradaDataHora[4] - '0') * 1000 +
+                      (entradaDataHora[5] - '0') * 100 +
+                      (entradaDataHora[6] - '0') * 10 +
+                      (entradaDataHora[7] - '0');
+    if (anoCompleto < 2000 || anoCompleto > 2099 ||
+        !dataValida(dia, mes, (byte)(anoCompleto - 2000))) {
+      somErro();
+      texto(5, 43, 1, CYAN, F("DATA INVALIDA"));
+      delay(650);
+      mostrarAjusteData();
+      return;
+    }
+    dataHoraEdicao.dia = dia;
+    dataHoraEdicao.mes = mes;
+    dataHoraEdicao.ano = anoCompleto - 2000;
+  } else {
+    byte hora = (entradaDataHora[0] - '0') * 10 + (entradaDataHora[1] - '0');
+    byte minuto = (entradaDataHora[2] - '0') * 10 + (entradaDataHora[3] - '0');
+    byte segundo = (entradaDataHora[4] - '0') * 10 + (entradaDataHora[5] - '0');
+    if (hora > 23 || minuto > 59 || segundo > 59) {
+      somErro();
+      texto(5, 43, 1, CYAN, F("HORA INVALIDA"));
+      delay(650);
+      mostrarAjusteHora();
+      return;
+    }
+    dataHoraEdicao.hora = hora;
+    dataHoraEdicao.minuto = minuto;
+    dataHoraEdicao.segundo = segundo;
+  }
+
+  rtcGravarDataHora(dataHoraEdicao);
+  rtcDisponivel = rtcLerDataHora(dataHoraAtual);
+  if (rtcDisponivel) somSucesso();
+  else somErro();
+  mostrarConfig();
+}
+
+void selecionarTeclaDataHora() {
+  if (!rtcDisponivel) {
+    mostrarConfig();
+    return;
+  }
+
+  if (tecladoLinha == TECLADO_LINHA_ACOES) {
+    if (tecladoColuna == 0) {
+      if (tamanhoEntradaDataHora > 0) {
+        entradaDataHora[--tamanhoEntradaDataHora] = '\\0';
+        somApagar();
+      }
+    } else if (tecladoColuna == 1) {
+      // ESPACO nao e usado em campos numericos.
+      somErro();
+    } else if (tecladoColuna == 2) {
+      confirmarDataHora();
+      return;
+    } else {
+      mostrarConfig();
+      return;
+    }
+  } else if (tecladoLinha == 3) {
+    char tecla = lerTeclaQwerty(tecladoLinha, tecladoColuna);
+    byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
+    if (tecla >= '0' && tecla <= '9' && tamanhoEntradaDataHora < limite) {
+      entradaDataHora[tamanhoEntradaDataHora++] = tecla;
+      entradaDataHora[tamanhoEntradaDataHora] = '\\0';
+    }
+  } else {
+    somErro();
+  }
+
+  if (tela == AJUSTAR_DATA) mostrarAjusteData();
+  else mostrarAjusteHora();
 }
 
 // =============================================
@@ -1803,7 +1895,7 @@ void alterarCampoDataHora(int direcao) {
 void atualizarNavegacao() {
   if (millis() - ultimoMovimento < 220) return;
 
-  if (tela == TERM_EDIT) {
+  if (tela == TERM_EDIT || tela == AJUSTAR_DATA || tela == AJUSTAR_HORA) {
     int dx = lerDirecaoX();
     int dy = lerDirecaoY();
     if (dx == 0 && dy == 0) return;
@@ -1851,21 +1943,9 @@ void atualizarNavegacao() {
     }
     ultimoMovimento = millis();
     somNavegacao();
-    mostrarTerminal();
-    return;
-  }
-
-  if (tela == AJUSTAR_DATA || tela == AJUSTAR_HORA) {
-    int dx = lerDirecaoX();
-    int dy = lerDirecaoY();
-    if (dx == 0 && dy == 0) return;
-    if (dx != 0) {
-      campoDataHora = (campoDataHora + 3 + dx) % 3;
-      if (tela == AJUSTAR_DATA) mostrarAjusteData();
-      else mostrarAjusteHora();
-    } else {
-      alterarCampoDataHora(dy < 0 ? 1 : -1);
-    }
+    if (tela == TERM_EDIT) mostrarTerminal();
+    else if (tela == AJUSTAR_DATA) mostrarAjusteData();
+    else mostrarAjusteHora();
     ultimoMovimento = millis();
     somNavegacao();
     return;
@@ -2018,12 +2098,7 @@ void atualizarBotao() {
       break;
     case AJUSTAR_DATA:
     case AJUSTAR_HORA:
-      if (rtcDisponivel) {
-        rtcGravarDataHora(dataHoraEdicao);
-        rtcDisponivel = rtcLerDataHora(dataHoraAtual);
-        somSucesso();
-      }
-      mostrarConfig();
+      selecionarTeclaDataHora();
       break;
     case DINO:
       mostrarJogos();
