@@ -666,6 +666,9 @@ void animacaoInicio() {
 // =============================================
 
 void mostrarDataHoraMenu() {
+  // Apaga a faixa anterior antes de redesenhar para evitar numeros sobrepostos.
+  retangulo(4, 23, 122, 14, F("#000000"));
+
   if (!rtcLerDataHora(dataHoraAtual)) {
     texto(5, 25, 1, RED, F("RTC NAO DETECTADO"));
     return;
