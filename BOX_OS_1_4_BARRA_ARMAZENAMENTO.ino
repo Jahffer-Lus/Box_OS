@@ -20,10 +20,10 @@ struct DataHoraRTC;
 #define BUZZER_PIN 6  // Buzzer passivo: positivo no D6, negativo no GND
 
 // RTC MH-Real-Time Clock com chip DS1302:
-// DAT -> D3, CLK -> D4, RST/CE -> D5
-#define RTC_IO 3
-#define RTC_SCLK 4
-#define RTC_CE 5
+// DAT -> D12, CLK -> D13, RST/CE -> D11
+#define RTC_IO 12
+#define RTC_SCLK 13
+#define RTC_CE 11
 
 #define CYAN  F("#55E6FF")
 #define WHITE F("#FFFFFF")
