@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <avr/pgmspace.h>
+#include <ThreeWire.h>
+#include <RtcDS1302.h>
 
 // Declaracao antecipada: evita erro dos prototipos automaticos do Arduino.
 struct DataHoraRTC;
@@ -24,6 +26,10 @@ struct DataHoraRTC;
 #define RTC_IO 12
 #define RTC_SCLK 13
 #define RTC_CE 11
+
+// Biblioteca Rtc by Makuna para o DS1302.
+ThreeWire rtcFio(RTC_IO, RTC_SCLK, RTC_CE);
+RtcDS1302<ThreeWire> Rtc(rtcFio);
 
 #define CYAN  F("#55E6FF")
 #define WHITE F("#FFFFFF")
@@ -209,60 +215,22 @@ void limpar() {
 }
 
 // =============================================
-// RTC DS1302 - COMUNICACAO DE 3 FIOS
+// RTC DS1302 - BIBLIOTECA RTC BY MAKUNA
+// DAT -> D12, CLK -> D13, RST/CE -> D11
 // =============================================
 
-byte decParaBCD(byte valor) {
-  return ((valor / 10) << 4) | (valor % 10);
-}
-
-byte bcdParaDec(byte valor) {
-  return ((valor >> 4) * 10) + (valor & 0x0F);
-}
-
-void rtcEscreverRegistro(byte endereco, byte valor) {
-  digitalWrite(RTC_CE, LOW);
-  digitalWrite(RTC_SCLK, LOW);
-  pinMode(RTC_IO, OUTPUT);
-  digitalWrite(RTC_CE, HIGH);
-  shiftOut(RTC_IO, RTC_SCLK, LSBFIRST, endereco);
-  shiftOut(RTC_IO, RTC_SCLK, LSBFIRST, valor);
-  digitalWrite(RTC_CE, LOW);
-}
-
-byte rtcLerRegistro(byte endereco) {
-  byte valor = 0;
-  digitalWrite(RTC_CE, LOW);
-  digitalWrite(RTC_SCLK, LOW);
-  pinMode(RTC_IO, OUTPUT);
-  digitalWrite(RTC_CE, HIGH);
-  shiftOut(RTC_IO, RTC_SCLK, LSBFIRST, endereco | 0x01);
-  pinMode(RTC_IO, INPUT);
-  valor = shiftIn(RTC_IO, RTC_SCLK, LSBFIRST);
-  digitalWrite(RTC_CE, LOW);
-  pinMode(RTC_IO, OUTPUT);
-  return valor;
-}
-
 bool rtcLerDataHora(DataHoraRTC &dh) {
-  byte segundosRaw = rtcLerRegistro(0x80);
-  dh.segundo = bcdParaDec(segundosRaw & 0x7F);
-  dh.minuto = bcdParaDec(rtcLerRegistro(0x82) & 0x7F);
+  if (!Rtc.IsDateTimeValid()) return false;
 
-  byte horaRaw = rtcLerRegistro(0x84);
-  if (horaRaw & 0x80) { // modo 12 horas
-    bool pm = horaRaw & 0x20;
-    dh.hora = bcdParaDec(horaRaw & 0x1F);
-    if (dh.hora == 12) dh.hora = 0;
-    if (pm) dh.hora += 12;
-  } else {
-    dh.hora = bcdParaDec(horaRaw & 0x3F);
-  }
+  RtcDateTime agora = Rtc.GetDateTime();
 
-  dh.dia = bcdParaDec(rtcLerRegistro(0x86) & 0x3F);
-  dh.mes = bcdParaDec(rtcLerRegistro(0x88) & 0x1F);
-  dh.diaSemana = bcdParaDec(rtcLerRegistro(0x8A) & 0x07);
-  dh.ano = bcdParaDec(rtcLerRegistro(0x8C));
+  dh.segundo = agora.Second();
+  dh.minuto = agora.Minute();
+  dh.hora = agora.Hour();
+  dh.dia = agora.Day();
+  dh.mes = agora.Month();
+  dh.ano = agora.Year() - 2000;
+  dh.diaSemana = agora.DayOfWeek();
 
   return dh.segundo < 60 && dh.minuto < 60 && dh.hora < 24 &&
          dh.dia >= 1 && dh.dia <= 31 && dh.mes >= 1 && dh.mes <= 12 &&
@@ -270,26 +238,28 @@ bool rtcLerDataHora(DataHoraRTC &dh) {
 }
 
 void rtcGravarDataHora(const DataHoraRTC &dh) {
-  rtcEscreverRegistro(0x8E, 0x00); // desativa protecao de escrita
-  rtcEscreverRegistro(0x80, decParaBCD(dh.segundo) & 0x7F);
-  rtcEscreverRegistro(0x82, decParaBCD(dh.minuto));
-  rtcEscreverRegistro(0x84, decParaBCD(dh.hora)); // formato 24 horas
-  rtcEscreverRegistro(0x86, decParaBCD(dh.dia));
-  rtcEscreverRegistro(0x88, decParaBCD(dh.mes));
-  rtcEscreverRegistro(0x8A, decParaBCD(dh.diaSemana ? dh.diaSemana : 1));
-  rtcEscreverRegistro(0x8C, decParaBCD(dh.ano));
-  rtcEscreverRegistro(0x8E, 0x80); // ativa protecao novamente
+  Rtc.SetIsWriteProtected(false);
+  Rtc.SetIsRunning(true);
+  Rtc.SetDateTime(RtcDateTime(
+    2000 + dh.ano,
+    dh.mes,
+    dh.dia,
+    dh.hora,
+    dh.minuto,
+    dh.segundo
+  ));
+  Rtc.SetIsWriteProtected(true);
 }
 
 void iniciarRTC() {
-  pinMode(RTC_CE, OUTPUT);
-  pinMode(RTC_SCLK, OUTPUT);
-  pinMode(RTC_IO, OUTPUT);
-  digitalWrite(RTC_CE, LOW);
-  digitalWrite(RTC_SCLK, LOW);
+  Rtc.Begin();
 
-  // Considera o RTC disponivel somente se a leitura retornar uma data valida.
+  if (!Rtc.GetIsRunning()) {
+    Rtc.SetIsRunning(true);
+  }
+
   rtcDisponivel = rtcLerDataHora(dataHoraAtual);
+
   if (!rtcDisponivel) {
     dataHoraAtual.segundo = 0;
     dataHoraAtual.minuto = 0;
@@ -2306,10 +2276,6 @@ void setup() {
   pinMode(JOY_SW, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
   noTone(BUZZER_PIN);
-  pinMode(RTC_CE, OUTPUT);
-  pinMode(RTC_SCLK, OUTPUT);
-  pinMode(RTC_IO, OUTPUT);
-
   calibrarJoystick();
   inicializarBoxFiles();
   carregarConfiguracoes();
