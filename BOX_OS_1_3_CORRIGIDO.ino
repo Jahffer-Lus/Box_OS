@@ -755,7 +755,7 @@ void desenharTecladoDataHora() {
       int x = xInicio + col * 12;
       bool ativo = (tecladoLinha == row && tecladoColuna == col);
       retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
-      char tecla[2] = { lerTeclaQwerty(row, col), '\\0' };
+      char tecla[2] = { lerTeclaQwerty(row, col), '\0' };
       textoCentro(x + 5, y + 6, 1, ativo ? CYAN : WHITE, tecla);
     }
   }
@@ -1770,7 +1770,7 @@ void selecionarConfig() {
     case 2:
       rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
       if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
-      entradaDataHora[0] = '\\0';
+      entradaDataHora[0] = '\0';
       tamanhoEntradaDataHora = 0;
       tecladoLinha = 3;
       tecladoColuna = 0;
@@ -1779,7 +1779,7 @@ void selecionarConfig() {
     case 3:
       rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
       if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
-      entradaDataHora[0] = '\\0';
+      entradaDataHora[0] = '\0';
       tamanhoEntradaDataHora = 0;
       tecladoLinha = 3;
       tecladoColuna = 0;
@@ -1860,7 +1860,7 @@ void selecionarTeclaDataHora() {
   if (tecladoLinha == TECLADO_LINHA_ACOES) {
     if (tecladoColuna == 0) {
       if (tamanhoEntradaDataHora > 0) {
-        entradaDataHora[--tamanhoEntradaDataHora] = '\\0';
+        entradaDataHora[--tamanhoEntradaDataHora] = '\0';
         somApagar();
       }
     } else if (tecladoColuna == 1) {
@@ -1878,7 +1878,7 @@ void selecionarTeclaDataHora() {
     byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
     if (tecla >= '0' && tecla <= '9' && tamanhoEntradaDataHora < limite) {
       entradaDataHora[tamanhoEntradaDataHora++] = tecla;
-      entradaDataHora[tamanhoEntradaDataHora] = '\\0';
+      entradaDataHora[tamanhoEntradaDataHora] = '\0';
     }
   } else {
     somErro();
