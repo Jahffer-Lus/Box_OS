@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <avr/pgmspace.h>
 
+// Declaracao antecipada: evita erro dos prototipos automaticos do Arduino.
+struct DataHoraRTC;
+
 // =============================================
 // BOX OS 1.3 - BOX FILES + QWERTY + BUZZER + RTC + TERMINAL
 // Arduino Uno R3 + BOX DISPLAY
