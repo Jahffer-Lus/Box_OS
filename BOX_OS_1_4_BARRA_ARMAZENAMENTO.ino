@@ -673,9 +673,16 @@ void mostrarDataHoraMenu() {
   retangulo(4, 23, 122, 14, F("#000000"));
 
   if (!rtcLerDataHora(dataHoraAtual)) {
+    relogioMenuInicializado = true;
+    relogioMenuDisponivel = false;
     texto(5, 25, 1, RED, F("RTC NAO DETECTADO"));
     return;
   }
+
+  // Salva exatamente os valores que estao sendo desenhados na tela.
+  dataHoraMenuAnterior = dataHoraAtual;
+  relogioMenuDisponivel = true;
+  relogioMenuInicializado = true;
 
   char dataHoraTexto[21];
   snprintf_P(
@@ -707,10 +714,6 @@ void mostrarMenu() {
 
   texto(5, 3, 3, CYAN, F("APLICATIVOS"));
   mostrarDataHoraMenu();
-
-  // Guarda o horario exibido para redesenhar somente quando ele mudar.
-  relogioMenuDisponivel = rtcLerDataHora(dataHoraMenuAnterior);
-  relogioMenuInicializado = true;
 
   linha(5, 38, 123, 38, GRAY);
 
