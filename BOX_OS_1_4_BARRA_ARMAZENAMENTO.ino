@@ -123,7 +123,7 @@ byte tamanhoEntradaDataHora = 0;
 // Terminal: entrada e ultima resposta.
 char terminalEntrada[17] = "";
 byte terminalTamanho = 0;
-char terminalResposta[25] = "DIGITE HELP";
+char terminalResposta[25] = "DIGITE AJUDA";
 bool terminalTecladoMinimizado = false;
 
 int centroX = 512;
@@ -789,7 +789,7 @@ void mostrarAjusteData() {
   linha(5, 21, 123, 21, GRAY);
 
   if (!rtcDisponivel) {
-    texto(5, 55, 1, WHITE, F("RTC NAO DETECTADO"));
+    texto(5, 55, 1, WHITE, F("MODULO DE RELOGIO NAO DETECTADO"));
     texto(5, 75, 1, GRAY, F("VERIFIQUE DAT/CLK/RST"));
     texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
     return;
@@ -810,7 +810,7 @@ void mostrarAjusteHora() {
   linha(5, 21, 123, 21, GRAY);
 
   if (!rtcDisponivel) {
-    texto(5, 55, 1, WHITE, F("RTC NAO DETECTADO"));
+    texto(5, 55, 1, WHITE, F("MODULO DE RELOGIO NAO DETECTADO"));
     texto(5, 75, 1, GRAY, F("VERIFIQUE DAT/CLK/RST"));
     texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
     return;
@@ -919,7 +919,7 @@ void abrirAplicativo() {
       tecladoLinha = 0;
       tecladoColuna = 0;
       terminalTecladoMinimizado = false;
-      strcpy(terminalResposta, "DIGITE HELP");
+      strcpy(terminalResposta, "DIGITE AJUDA");
       mostrarTerminal();
       break;
 
@@ -1004,28 +1004,28 @@ void mostrarTerminal() {
 }
 
 void executarComandoTerminal() {
-  if (strcmp(terminalEntrada, "HELP") == 0) {
-    strcpy(terminalResposta, "TIME DATE UPTIME CLEAR");
-  } else if (strcmp(terminalEntrada, "TIME") == 0) {
+  if ((strcmp(terminalEntrada, "AJUDA") == 0 || strcmp(terminalEntrada, "HELP") == 0)) {
+    strcpy(terminalResposta, "HORA DATA TEMPO LIMPAR");
+  } else if ((strcmp(terminalEntrada, "HORA") == 0 || strcmp(terminalEntrada, "TIME") == 0)) {
     if (rtcLerDataHora(dataHoraAtual)) {
       snprintf_P(terminalResposta, sizeof(terminalResposta),
         PSTR("HORA %02u:%02u:%02u"), dataHoraAtual.hora,
         dataHoraAtual.minuto, dataHoraAtual.segundo);
-    } else strcpy(terminalResposta, "RTC NAO DETECTADO");
-  } else if (strcmp(terminalEntrada, "DATE") == 0) {
+    } else strcpy(terminalResposta, "MODULO DE RELOGIO NAO DETECTADO");
+  } else if ((strcmp(terminalEntrada, "DATA") == 0 || strcmp(terminalEntrada, "DATE") == 0)) {
     if (rtcLerDataHora(dataHoraAtual)) {
       snprintf_P(terminalResposta, sizeof(terminalResposta),
         PSTR("DATA %02u/%02u/20%02u"), dataHoraAtual.dia,
         dataHoraAtual.mes, dataHoraAtual.ano);
-    } else strcpy(terminalResposta, "RTC NAO DETECTADO");
-  } else if (strcmp(terminalEntrada, "UPTIME") == 0) {
+    } else strcpy(terminalResposta, "MODULO DE RELOGIO NAO DETECTADO");
+  } else if ((strcmp(terminalEntrada, "TEMPO") == 0 || strcmp(terminalEntrada, "UPTIME") == 0)) {
     unsigned long segs = (millis() - inicioSistema) / 1000UL;
     snprintf_P(terminalResposta, sizeof(terminalResposta),
       PSTR("ATIVO %lu SEG"), segs);
-  } else if (strcmp(terminalEntrada, "CLEAR") == 0) {
+  } else if ((strcmp(terminalEntrada, "LIMPAR") == 0 || strcmp(terminalEntrada, "CLEAR") == 0)) {
     strcpy(terminalResposta, "TELA LIMPA");
   } else if (terminalTamanho == 0) {
-    strcpy(terminalResposta, "DIGITE HELP");
+    strcpy(terminalResposta, "DIGITE AJUDA");
   } else {
     strcpy(terminalResposta, "COMANDO DESCONHECIDO");
   }
@@ -1818,7 +1818,7 @@ void atualizarDino() {
       somGameOver();
 
       limpar();
-      texto(20, 48, 3, CYAN, F("GAME OVER"));
+      texto(20, 48, 3, CYAN, F("FIM DE JOGO"));
 
       char score[15];
       snprintf_P(score, sizeof(score), PSTR("PONTOS: %d"), pontos);
