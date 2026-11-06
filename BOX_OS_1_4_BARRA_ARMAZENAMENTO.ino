@@ -123,7 +123,7 @@ struct DataHoraRTC {
 DataHoraRTC dataHoraAtual;
 DataHoraRTC dataHoraEdicao;
 bool rtcDisponivel = false;
-char entradaDataHora[9] = "";
+char entradaDataHora[11] = "";
 byte tamanhoEntradaDataHora = 0;
 
 // Terminal: entrada e ultima resposta.
@@ -140,6 +140,7 @@ const int LIMITE_JOYSTICK = 130;
 unsigned long ultimoMovimento = 0;
 unsigned long ultimoBotao = 0;
 unsigned long ultimaAtualizacao = 0;
+unsigned long ultimaAtualizacaoRelogio = 0;
 
 bool iniciado = false;
 bool ultimoEstadoBotao = HIGH;
@@ -664,19 +665,40 @@ void animacaoInicio() {
 // MENU PRINCIPAL
 // =============================================
 
+void mostrarDataHoraMenu() {
+  if (!rtcLerDataHora(dataHoraAtual)) {
+    texto(5, 25, 1, RED, F("RTC NAO DETECTADO"));
+    return;
+  }
+
+  char dataHoraTexto[21];
+  snprintf_P(
+    dataHoraTexto, sizeof(dataHoraTexto),
+    PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+    dataHoraAtual.dia,
+    dataHoraAtual.mes,
+    2000 + dataHoraAtual.ano,
+    dataHoraAtual.hora,
+    dataHoraAtual.minuto,
+    dataHoraAtual.segundo
+  );
+  texto(5, 25, 1, WHITE, dataHoraTexto);
+}
+
 void mostrarMenu() {
   tela = MENU;
   limpar();
 
-  texto(5, 5, 3, CYAN, F("APLICATIVOS"));
-  linha(5, 23, 123, 23, GRAY);
+  texto(5, 3, 3, CYAN, F("APLICATIVOS"));
+  mostrarDataHoraMenu();
+  linha(5, 38, 123, 38, GRAY);
 
   for (byte i = 0; i < TOTAL_APPS; i++) {
-    int y = 31 + i * 21;
+    int y = 42 + i * 18;
 
     if (i == selecionado) {
-      linha(5, y - 4, 123, y - 4, CYAN);
-      linha(5, y + 20, 123, y + 20, CYAN);
+      linha(5, y - 3, 123, y - 3, CYAN);
+      linha(5, y + 17, 123, y + 17, CYAN);
     }
 
     retanguloArredondado(
@@ -765,9 +787,9 @@ void mostrarAjusteData() {
     return;
   }
 
-  texto(5, 27, 1, GRAY, F("DDMMAAAA:"));
+  texto(5, 27, 1, GRAY, F("DD/MM/AAAA:"));
   texto(62, 27, 1, WHITE, entradaDataHora);
-  texto(5, 43, 1, GRAY, F("DIGITE 8 NUMEROS"));
+  texto(5, 43, 1, GRAY, F("DIGITE DIA/MES/ANO"));
   desenharTecladoDataHora();
   texto(5, 137, 1, GRAY, F("JOY: MOVER  SW: USAR"));
   texto(5, 149, 1, CYAN, F("ENTER SALVA  DEL APAGA"));
@@ -1863,11 +1885,11 @@ void confirmarDataHora() {
 
   if (tela == AJUSTAR_DATA) {
     byte dia = (entradaDataHora[0] - '0') * 10 + (entradaDataHora[1] - '0');
-    byte mes = (entradaDataHora[2] - '0') * 10 + (entradaDataHora[3] - '0');
-    int anoCompleto = (entradaDataHora[4] - '0') * 1000 +
-                      (entradaDataHora[5] - '0') * 100 +
-                      (entradaDataHora[6] - '0') * 10 +
-                      (entradaDataHora[7] - '0');
+    byte mes = (entradaDataHora[3] - '0') * 10 + (entradaDataHora[4] - '0');
+    int anoCompleto = (entradaDataHora[6] - '0') * 1000 +
+                      (entradaDataHora[7] - '0') * 100 +
+                      (entradaDataHora[8] - '0') * 10 +
+                      (entradaDataHora[9] - '0');
     if (anoCompleto < 2000 || anoCompleto > 2099 ||
         !dataValida(dia, mes, (byte)(anoCompleto - 2000))) {
       somErro();
@@ -1911,14 +1933,30 @@ void selecionarTeclaDataHora() {
   if (tecladoLinha == TECLADO_LINHA_ACOES) {
     if (tecladoColuna == 0) {
       if (tamanhoEntradaDataHora > 0) {
-        entradaDataHora[--tamanhoEntradaDataHora] = '\0';
+        if (tela == AJUSTAR_DATA) {
+          byte posicao = strlen(entradaDataHora);
+          if (posicao > 0 && entradaDataHora[posicao - 1] == '/') posicao--;
+          if (posicao > 0) posicao--;
+          entradaDataHora[posicao] = '\0';
+        } else {
+          entradaDataHora[--tamanhoEntradaDataHora] = '\0';
+        }
+        tamanhoEntradaDataHora--;
         somApagar();
       }
     } else if (tecladoColuna == 1) {
       byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
       if (tamanhoEntradaDataHora < limite) {
-        entradaDataHora[tamanhoEntradaDataHora++] = '0';
-        entradaDataHora[tamanhoEntradaDataHora] = '\0';
+        if (tela == AJUSTAR_DATA &&
+            (tamanhoEntradaDataHora == 2 || tamanhoEntradaDataHora == 4)) {
+          byte posicao = strlen(entradaDataHora);
+          entradaDataHora[posicao++] = '/';
+          entradaDataHora[posicao] = '\0';
+        }
+        byte posicao = strlen(entradaDataHora);
+        entradaDataHora[posicao++] = '0';
+        entradaDataHora[posicao] = '\0';
+        tamanhoEntradaDataHora++;
       }
     } else if (tecladoColuna == 2) {
       confirmarDataHora();
@@ -1931,8 +1969,16 @@ void selecionarTeclaDataHora() {
     char tecla = '1' + tecladoLinha * 3 + tecladoColuna;
     byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
     if (tamanhoEntradaDataHora < limite) {
-      entradaDataHora[tamanhoEntradaDataHora++] = tecla;
-      entradaDataHora[tamanhoEntradaDataHora] = '\0';
+      if (tela == AJUSTAR_DATA &&
+          (tamanhoEntradaDataHora == 2 || tamanhoEntradaDataHora == 4)) {
+        byte posicao = strlen(entradaDataHora);
+        entradaDataHora[posicao++] = '/';
+        entradaDataHora[posicao] = '\0';
+      }
+      byte posicao = strlen(entradaDataHora);
+      entradaDataHora[posicao++] = tecla;
+      entradaDataHora[posicao] = '\0';
+      tamanhoEntradaDataHora++;
     }
   }
 
@@ -2305,6 +2351,11 @@ void loop() {
       ultimaAtualizacao = millis();
       atualizarMonitor();
     }
+  }
+
+  if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 1000) {
+    ultimaAtualizacaoRelogio = millis();
+    mostrarDataHoraMenu();
   }
 
   atualizarNavegacao();
