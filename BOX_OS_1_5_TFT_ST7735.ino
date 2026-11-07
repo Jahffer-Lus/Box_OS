@@ -9,7 +9,7 @@
 
 #define JOY_X A0
 #define JOY_Y A1
-#define JOY_SW 2
+#define JOY_SW 7
 #define BUZZER_PIN 6
 
 #define TFT_CS 13
