@@ -141,12 +141,12 @@ void carregarConfiguracoes() {
   byte assinatura = EEPROM.read(CONFIG_EEPROM_BASE);
   byte versao = EEPROM.read(CONFIG_EEPROM_BASE + 1);
   byte fonte = EEPROM.read(CONFIG_EEPROM_BASE + 2);
-  byte iconeAntigo = EEPROM.read(CONFIG_EEPROM_BASE + 3);
+  byte valorLegado = EEPROM.read(CONFIG_EEPROM_BASE + 3);
   byte checksum = EEPROM.read(CONFIG_EEPROM_BASE + 4);
 
   if (assinatura == CONFIG_MAGIC && versao == 1 &&
-      fonte >= 1 && fonte <= 4 && iconeAntigo >= 1 && iconeAntigo <= 4 &&
-      checksum == (byte)(CONFIG_MAGIC ^ fonte ^ iconeAntigo)) {
+      fonte >= 1 && fonte <= 4 && valorLegado >= 1 && valorLegado <= 4 &&
+      checksum == (byte)(CONFIG_MAGIC ^ fonte ^ valorLegado)) {
     tamanhoFonte = fonte;
   } else {
     tamanhoFonte = 2;
