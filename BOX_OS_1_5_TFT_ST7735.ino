@@ -124,10 +124,10 @@ const byte ACAO_OK = 2;
 
 
 void limpar() {
-  // Mostra uma tela branca durante 500 ms antes de redesenhar a interface.
+  // Pisca rapidamente a tela sem exibir a transição branca.
+  displayTFT.enableDisplay(false);
+  delay(35);
   displayTFT.enableDisplay(true);
-  displayTFT.fillScreen(ST77XX_WHITE);
-  delay(500);
   displayTFT.fillScreen(ST77XX_BLACK);
 }
 
