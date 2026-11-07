@@ -1,7 +1,6 @@
 
 #include <avr/wdt.h>
 #include <EEPROM.h>
-#include <math.h>
 #include <string.h>
 #include <stdio.h>
 #include <avr/pgmspace.h>
@@ -29,7 +28,7 @@ Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define RED F("#F04B4B")
 
 const byte TOTAL_APPS = 2;
-const byte TOTAL_CONFIG = 5;
+const byte TOTAL_CONFIG = 4;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
@@ -38,19 +37,11 @@ const __FlashStringHelper *nomeApp(byte indice) {
   }
 }
 
-const __FlashStringHelper *iconeApp(byte indice) {
-  switch (indice) {
-    case 0: return F("F");
-    default: return F("C");
-  }
-}
-
 const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
   switch (indice) {
     case 0: return F("Tamanho da Fonte");
-    case 1: return F("Tamanho dos Icones");
-    case 2: return F("Desligar");
-    case 3: return F("Reiniciar");
+    case 1: return F("Desligar");
+    case 2: return F("Reiniciar");
     default: return F("Voltar");
   }
 }
@@ -60,7 +51,6 @@ enum Screen {
   MENU,
   CONFIG,
   AJUSTAR_FONTE,
-  AJUSTAR_ICONES,
   FILE_LIST,
   FILE_VIEW,
   FILE_EDIT
@@ -72,7 +62,6 @@ byte selecionado = 0;
 byte configSelecionada = 0;
 
 byte tamanhoFonte = 2;
-byte tamanhoIcone = 2;
 byte configPrimeira = 0;
 
 const int CONFIG_EEPROM_BASE = 1008;
@@ -143,26 +132,24 @@ void salvarConfiguracoes() {
   EEPROM.update(CONFIG_EEPROM_BASE, CONFIG_MAGIC);
   EEPROM.update(CONFIG_EEPROM_BASE + 1, 1);
   EEPROM.update(CONFIG_EEPROM_BASE + 2, tamanhoFonte);
-  EEPROM.update(CONFIG_EEPROM_BASE + 3, tamanhoIcone);
+  EEPROM.update(CONFIG_EEPROM_BASE + 3, 2);
   EEPROM.update(CONFIG_EEPROM_BASE + 4,
-    (byte)(CONFIG_MAGIC ^ tamanhoFonte ^ tamanhoIcone));
+    (byte)(CONFIG_MAGIC ^ tamanhoFonte ^ 2));
 }
 
 void carregarConfiguracoes() {
   byte assinatura = EEPROM.read(CONFIG_EEPROM_BASE);
   byte versao = EEPROM.read(CONFIG_EEPROM_BASE + 1);
   byte fonte = EEPROM.read(CONFIG_EEPROM_BASE + 2);
-  byte icone = EEPROM.read(CONFIG_EEPROM_BASE + 3);
+  byte iconeAntigo = EEPROM.read(CONFIG_EEPROM_BASE + 3);
   byte checksum = EEPROM.read(CONFIG_EEPROM_BASE + 4);
 
   if (assinatura == CONFIG_MAGIC && versao == 1 &&
-      fonte >= 1 && fonte <= 4 && icone >= 1 && icone <= 4 &&
-      checksum == (byte)(CONFIG_MAGIC ^ fonte ^ icone)) {
+      fonte >= 1 && fonte <= 4 && iconeAntigo >= 1 && iconeAntigo <= 4 &&
+      checksum == (byte)(CONFIG_MAGIC ^ fonte ^ iconeAntigo)) {
     tamanhoFonte = fonte;
-    tamanhoIcone = icone;
   } else {
     tamanhoFonte = 2;
-    tamanhoIcone = 2;
     salvarConfiguracoes();
   }
 }
@@ -258,13 +245,6 @@ void texto(int x, int y, int tamanho, const __FlashStringHelper *cor, const char
   desenharTextoTFT(x, y, ajustarTamanhoFonte(tamanho), corTFT(cor), mensagem, false);
 }
 
-void textoIcone(int x, int y, int tamanho, const __FlashStringHelper *cor, const __FlashStringHelper *mensagem) {
-  int ajustado = (int)tamanho + (int)tamanhoIcone - 2;
-  if (ajustado < 1) ajustado = 1;
-  if (ajustado > 4) ajustado = 4;
-  desenharTextoFlashTFT(x, y, ajustado, corTFT(cor), mensagem, false);
-}
-
 void linha(int x1, int y1, int x2, int y2, const __FlashStringHelper *cor) {
   displayTFT.drawLine(x1, y1, x2, y2, corTFT(cor));
 }
@@ -279,13 +259,6 @@ void retangulo(int x, int y, int largura, int altura, const __FlashStringHelper 
 
 void retanguloArredondado(int x, int y, int largura, int altura, int raio, const __FlashStringHelper *cor) {
   displayTFT.fillRoundRect(x, y, largura, altura, raio, corTFT(cor));
-}
-
-void textoIconeCentro(int x, int y, int tamanho, const __FlashStringHelper *cor, const __FlashStringHelper *mensagem) {
-  int ajustado = (int)tamanho + (int)tamanhoIcone - 2;
-  if (ajustado < 1) ajustado = 1;
-  if (ajustado > 4) ajustado = 4;
-  desenharTextoFlashTFT(x, y - (ajustado * 4), ajustado, corTFT(cor), mensagem, true);
 }
 
 void textoCentro(int x, int y, int tamanho, const __FlashStringHelper *cor, const char *mensagem) {
@@ -375,12 +348,7 @@ void mostrarMenu() {
       linha(5, y + 17, 123, y + 17, CYAN);
     }
 
-    retanguloArredondado(
-      8, y - 1, 18, 18, 4,
-      i == selecionado ? CYAN : DARK
-    );
-    textoIconeCentro(17, y + 8, 2, WHITE, iconeApp(i));
-    texto(38, y + 1, 2, i == selecionado ? CYAN : WHITE, nomeApp(i));
+    texto(10, y + 1, 2, i == selecionado ? CYAN : WHITE, nomeApp(i));
   }
 
   linha(5, 137, 123, 137, DARK);
@@ -431,26 +399,6 @@ void mostrarAjusteFonte() {
   texto(5, 121, 1, GRAY, F("ESQ/DIR: ALTERAR"));
   texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
 }
-
-void mostrarAjusteIcones() {
-  tela = AJUSTAR_ICONES;
-  limpar();
-
-  texto(5, 5, 3, CYAN, F("TAMANHO DOS ICONES"));
-  linha(5, 23, 123, 23, GRAY);
-
-  texto(8, 34, 1, GRAY, F("PREVIA DO ICONE:"));
-  textoIcone(18, 60, tamanhoIcone, WHITE, F("BOX"));
-  texto(55, 69, 2, CYAN, F("FILES"));
-
-  char valor[3];
-  snprintf_P(valor, sizeof(valor), PSTR("%d"), tamanhoIcone);
-  texto(99, 53, 2, CYAN, valor);
-
-  texto(5, 121, 1, GRAY, F("ESQ/DIR: ALTERAR"));
-  texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
-}
-
 
 void desligarBOX() {
   limpar();
@@ -705,17 +653,14 @@ void mostrarListaArquivos() {
     if (item < qtdArquivos) {
       char nome[FILE_NAME_SIZE + 1];
       lerNomeArquivo(indicesArquivos[item], nome);
-      textoIcone(8, y - 1, 2, WHITE, F("📄"));
-      texto(29, y, 1, item == selecionadoArquivo ? CYAN : WHITE, nome);
+      texto(8, y, 1, item == selecionadoArquivo ? CYAN : WHITE, nome);
     }
     else if (temEspacoArquivo && item == qtdArquivos) {
-      textoIcone(8, y - 1, 2, WHITE, F("➕"));
-      texto(29, y, 1, item == selecionadoArquivo ? CYAN : WHITE,
+      texto(8, y, 1, item == selecionadoArquivo ? CYAN : WHITE,
             F("NOVO ARQUIVO"));
     }
     else {
-      textoIcone(8, y - 1, 2, WHITE, F("↩"));
-      texto(29, y, 1, item == selecionadoArquivo ? CYAN : WHITE,
+      texto(8, y, 1, item == selecionadoArquivo ? CYAN : WHITE,
             F("VOLTAR"));
     }
   }
@@ -1108,15 +1053,14 @@ int pontos = 0;
 void selecionarConfig() {
   switch (configSelecionada) {
     case 0: mostrarAjusteFonte(); break;
-    case 1: mostrarAjusteIcones(); break;
-    case 2: desligarBOX(); break;
-    case 3: reiniciarBOX(); break;
+    case 1: desligarBOX(); break;
+    case 2: reiniciarBOX(); break;
     default: mostrarMenu(); break;
   }
 }
 
 void atualizarNavegacao() {
-  if (millis() - ultimoMovimento < 220) return;
+  if (millis() - ultimoMovimento < 110) return;
 
   if (tela == FILE_EDIT) {
     int dx = lerDirecaoX();
@@ -1197,7 +1141,7 @@ void atualizarNavegacao() {
   }
 
   int direcao;
-  if (tela == AJUSTAR_FONTE || tela == AJUSTAR_ICONES) {
+  if (tela == AJUSTAR_FONTE) {
     direcao = lerDirecaoX();
     if (direcao == 0) return;
   } else {
@@ -1222,12 +1166,6 @@ void atualizarNavegacao() {
     salvarConfiguracoes();
     mostrarAjusteFonte();
   }
-  else if (tela == AJUSTAR_ICONES) {
-    if (direcao < 0 && tamanhoIcone > 1) tamanhoIcone--;
-    if (direcao > 0 && tamanhoIcone < 4) tamanhoIcone++;
-    salvarConfiguracoes();
-    mostrarAjusteIcones();
-  }
 }
 
 void atualizarBotao() {
@@ -1241,7 +1179,6 @@ void atualizarBotao() {
       selecionarConfig();
       break;
     case AJUSTAR_FONTE:
-    case AJUSTAR_ICONES:
       mostrarConfig();
       break;
     case FILE_LIST:
