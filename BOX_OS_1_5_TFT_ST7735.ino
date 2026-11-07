@@ -127,14 +127,12 @@ const byte ACAO_OK = 2;
 
 
 void limpar() {
-  // Esconde a tela enquanto o novo conteudo e desenhado.
-  displayTFT.enableDisplay(false);
+  // Limpa o quadro sem desligar o painel, evitando flashes brancos.
   displayTFT.fillScreen(ST77XX_BLACK);
 }
 
 void mostrarTela() {
-  // Exibe o conteudo assim que o desenho termina.
-  displayTFT.enableDisplay(true);
+  // Mantido para preservar as chamadas das telas.
 }
 
 
