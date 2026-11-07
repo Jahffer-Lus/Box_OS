@@ -12,11 +12,11 @@
 #define JOY_SW 2
 #define BUZZER_PIN 6
 
-#define TFT_CS 10
-#define TFT_DC 9
-#define TFT_RST 8
-#define TFT_MOSI 4
-#define TFT_SCLK 5
+#define TFT_CS 13
+#define TFT_DC 11
+#define TFT_RST 12
+#define TFT_MOSI 10
+#define TFT_SCLK 9
 Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define CYAN  F("#55E6FF")
 #define WHITE F("#FFFFFF")
