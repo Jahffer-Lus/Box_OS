@@ -1210,7 +1210,7 @@ void setup() {
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
   displayTFT.initR(INITR_BLACKTAB);
-  displayTFT.setRotation(0);
+  displayTFT.setRotation(3);
   displayTFT.fillScreen(ST77XX_BLACK);
   calibrarJoystick();
   inicializarBoxFiles();
