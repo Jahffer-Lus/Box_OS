@@ -5,32 +5,20 @@
 #include <string.h>
 #include <stdio.h>
 #include <avr/pgmspace.h>
-#include <ThreeWire.h>
-#include <RtcDS1302.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
-
-struct DataHoraRTC;
-
 
 #define JOY_X A0
 #define JOY_Y A1
 #define JOY_SW 2
 #define BUZZER_PIN 6
 
-#define RTC_IO 12
-#define RTC_SCLK 13
-#define RTC_CE 11
-
-ThreeWire rtcFio(RTC_IO, RTC_SCLK, RTC_CE);
 #define TFT_CS 10
 #define TFT_DC 9
 #define TFT_RST 8
 #define TFT_MOSI 4
 #define TFT_SCLK 5
 Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
-RtcDS1302<ThreeWire> Rtc(rtcFio);
-
 #define CYAN  F("#55E6FF")
 #define WHITE F("#FFFFFF")
 #define GRAY  F("#AABBC8")
@@ -41,7 +29,7 @@ RtcDS1302<ThreeWire> Rtc(rtcFio);
 #define RED F("#F04B4B")
 
 const byte TOTAL_APPS = 2;
-const byte TOTAL_CONFIG = 7;
+const byte TOTAL_CONFIG = 5;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
@@ -61,10 +49,8 @@ const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
   switch (indice) {
     case 0: return F("Tamanho da Fonte");
     case 1: return F("Tamanho dos Icones");
-    case 2: return F("Ajustar Data");
-    case 3: return F("Ajustar Hora");
-    case 4: return F("Desligar");
-    case 5: return F("Reiniciar");
+    case 2: return F("Desligar");
+    case 3: return F("Reiniciar");
     default: return F("Voltar");
   }
 }
@@ -75,8 +61,6 @@ enum Screen {
   CONFIG,
   AJUSTAR_FONTE,
   AJUSTAR_ICONES,
-  AJUSTAR_DATA,
-  AJUSTAR_HORA,
   FILE_LIST,
   FILE_VIEW,
   FILE_EDIT
@@ -94,25 +78,6 @@ byte configPrimeira = 0;
 const int CONFIG_EEPROM_BASE = 1008;
 const byte CONFIG_MAGIC = 0xB7;
 
-struct DataHoraRTC {
-  byte segundo;
-  byte minuto;
-  byte hora;
-  byte dia;
-  byte mes;
-  byte ano;
-  byte diaSemana;
-};
-
-DataHoraRTC dataHoraAtual;
-DataHoraRTC dataHoraEdicao;
-DataHoraRTC dataHoraMenuAnterior;
-bool rtcDisponivel = false;
-bool relogioMenuInicializado = false;
-bool relogioMenuDisponivel = false;
-char entradaDataHora[11] = "";
-byte tamanhoEntradaDataHora = 0;
-
 int centroX = 512;
 int centroY = 512;
 
@@ -120,8 +85,6 @@ const int LIMITE_JOYSTICK = 130;
 
 unsigned long ultimoMovimento = 0;
 unsigned long ultimoBotao = 0;
-unsigned long ultimaAtualizacaoRelogio = 0;
-
 bool iniciado = false;
 bool ultimoEstadoBotao = HIGH;
 
@@ -157,9 +120,6 @@ void mostrarListaArquivos();
 void mostrarLeitorArquivo();
 void mostrarEditorArquivo();
 void mostrarConfig();
-void mostrarAjusteData();
-void mostrarAjusteHora();
-
 const char TECLADO_QWERTY[4][11] PROGMEM = {
   "QWERTYUIOP",
   "ASDFGHJKL",
@@ -176,59 +136,6 @@ const byte ACAO_OK = 2;
 
 void limpar() {
   displayTFT.fillScreen(ST77XX_BLACK);
-}
-
-
-bool rtcLerDataHora(DataHoraRTC &dh) {
-  if (!Rtc.IsDateTimeValid()) return false;
-
-  RtcDateTime agora = Rtc.GetDateTime();
-
-  dh.segundo = agora.Second();
-  dh.minuto = agora.Minute();
-  dh.hora = agora.Hour();
-  dh.dia = agora.Day();
-  dh.mes = agora.Month();
-  dh.ano = agora.Year() - 2000;
-  dh.diaSemana = agora.DayOfWeek();
-
-  return dh.segundo < 60 && dh.minuto < 60 && dh.hora < 24 &&
-         dh.dia >= 1 && dh.dia <= 31 && dh.mes >= 1 && dh.mes <= 12 &&
-         dh.ano <= 99;
-}
-
-void rtcGravarDataHora(const DataHoraRTC &dh) {
-  Rtc.SetIsWriteProtected(false);
-  Rtc.SetIsRunning(true);
-  Rtc.SetDateTime(RtcDateTime(
-    2000 + dh.ano,
-    dh.mes,
-    dh.dia,
-    dh.hora,
-    dh.minuto,
-    dh.segundo
-  ));
-  Rtc.SetIsWriteProtected(true);
-}
-
-void iniciarRTC() {
-  Rtc.Begin();
-
-  if (!Rtc.GetIsRunning()) {
-    Rtc.SetIsRunning(true);
-  }
-
-  rtcDisponivel = rtcLerDataHora(dataHoraAtual);
-
-  if (!rtcDisponivel) {
-    dataHoraAtual.segundo = 0;
-    dataHoraAtual.minuto = 0;
-    dataHoraAtual.hora = 12;
-    dataHoraAtual.dia = 1;
-    dataHoraAtual.mes = 1;
-    dataHoraAtual.ano = 26;
-    dataHoraAtual.diaSemana = 1;
-  }
 }
 
 
@@ -510,50 +417,11 @@ void animacaoInicio() {
 }
 
 
-void mostrarDataHoraMenu() {
-  retangulo(4, 23, 122, 14, F("#000000"));
-
-  if (!rtcLerDataHora(dataHoraAtual)) {
-    relogioMenuInicializado = true;
-    relogioMenuDisponivel = false;
-    texto(5, 25, 1, RED, F("RTC NAO DETECTADO"));
-    return;
-  }
-
-  dataHoraMenuAnterior = dataHoraAtual;
-  relogioMenuDisponivel = true;
-  relogioMenuInicializado = true;
-
-  char dataHoraTexto[21];
-  snprintf_P(
-    dataHoraTexto, sizeof(dataHoraTexto),
-    PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-    dataHoraAtual.dia,
-    dataHoraAtual.mes,
-    2000 + dataHoraAtual.ano,
-    dataHoraAtual.hora,
-    dataHoraAtual.minuto,
-    dataHoraAtual.segundo
-  );
-  texto(5, 25, 1, WHITE, dataHoraTexto);
-}
-
-bool dataHoraMenuMudou(const DataHoraRTC &a, const DataHoraRTC &b) {
-  return a.segundo != b.segundo ||
-         a.minuto != b.minuto ||
-         a.hora != b.hora ||
-         a.dia != b.dia ||
-         a.mes != b.mes ||
-         a.ano != b.ano ||
-         a.diaSemana != b.diaSemana;
-}
-
 void mostrarMenu() {
   tela = MENU;
   limpar();
 
   texto(5, 3, 3, CYAN, F("APLICATIVOS"));
-  mostrarDataHoraMenu();
 
   linha(5, 38, 123, 38, GRAY);
 
@@ -601,78 +469,6 @@ void mostrarConfig() {
   }
   texto(5, 137, 1, GRAY, F("SETAS: NAVEGAR"));
   texto(5, 148, 1, CYAN, F("SW: SELECIONAR"));
-}
-
-void desenharTecladoDataHora() {
-  const int xTeclas[3] = {20, 55, 90};
-  const int yTeclas[3] = {59, 76, 93};
-
-  for (byte row = 0; row < 3; row++) {
-    for (byte col = 0; col < 3; col++) {
-      bool ativo = (tecladoLinha == row && tecladoColuna == col);
-      int x = xTeclas[col];
-      int y = yTeclas[row];
-      retanguloArredondado(x, y, 25, 14, 3, ativo ? CYAN : DARK);
-      char tecla[2] = {(char)('1' + row * 3 + col), '\0'};
-      textoCentro(x + 12, y + 7, 1, ativo ? CYAN : WHITE, tecla);
-    }
-  }
-
-  bool a0 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 0;
-  bool a1 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 1;
-  bool a2 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 2;
-  bool a3 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 3;
-
-  retanguloArredondado(3, 116, 25, 12, 2, a0 ? CYAN : DARK);
-  textoCentro(15, 122, 1, a0 ? CYAN : WHITE, F("DEL"));
-  retanguloArredondado(30, 116, 38, 12, 2, a1 ? CYAN : DARK);
-  textoCentro(49, 122, 1, a1 ? CYAN : WHITE, F("0"));
-  retanguloArredondado(70, 116, 30, 12, 2, a2 ? CYAN : DARK);
-  textoCentro(85, 122, 1, a2 ? CYAN : WHITE, F("ENTER"));
-  retanguloArredondado(102, 116, 24, 12, 2, a3 ? CYAN : DARK);
-  textoCentro(114, 122, 1, a3 ? CYAN : WHITE, F("SAIR"));
-}
-
-void mostrarAjusteData() {
-  tela = AJUSTAR_DATA;
-  limpar();
-  texto(5, 4, 2, CYAN, F("AJUSTAR DATA"));
-  linha(5, 21, 123, 21, GRAY);
-
-  if (!rtcDisponivel) {
-    texto(5, 55, 1, WHITE, F("MODULO DE RELOGIO NAO DETECTADO"));
-    texto(5, 75, 1, GRAY, F("VERIFIQUE DAT/CLK/RST"));
-    texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
-    return;
-  }
-
-  texto(5, 27, 1, GRAY, F("DD/MM/AAAA:"));
-  texto(62, 27, 1, WHITE, entradaDataHora);
-  texto(5, 43, 1, GRAY, F("DIGITE DIA/MES/ANO"));
-  desenharTecladoDataHora();
-  texto(5, 137, 1, GRAY, F("JOY: MOVER  SW: USAR"));
-  texto(5, 149, 1, CYAN, F("ENTER SALVA  DEL APAGA"));
-}
-
-void mostrarAjusteHora() {
-  tela = AJUSTAR_HORA;
-  limpar();
-  texto(5, 4, 2, CYAN, F("AJUSTAR HORA"));
-  linha(5, 21, 123, 21, GRAY);
-
-  if (!rtcDisponivel) {
-    texto(5, 55, 1, WHITE, F("MODULO DE RELOGIO NAO DETECTADO"));
-    texto(5, 75, 1, GRAY, F("VERIFIQUE DAT/CLK/RST"));
-    texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
-    return;
-  }
-
-  texto(5, 27, 1, GRAY, F("HHMMSS:"));
-  texto(62, 27, 1, WHITE, entradaDataHora);
-  texto(5, 43, 1, GRAY, F("DIGITE 6 NUMEROS"));
-  desenharTecladoDataHora();
-  texto(5, 137, 1, GRAY, F("JOY: MOVER  SW: USAR"));
-  texto(5, 149, 1, CYAN, F("ENTER SALVA  DEL APAGA"));
 }
 
 void mostrarAjusteFonte() {
@@ -1371,214 +1167,14 @@ void selecionarConfig() {
   switch (configSelecionada) {
     case 0: mostrarAjusteFonte(); break;
     case 1: mostrarAjusteIcones(); break;
-    case 2:
-      rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
-      if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
-      entradaDataHora[0] = '\0';
-      tamanhoEntradaDataHora = 0;
-      tecladoLinha = 0;
-      tecladoColuna = 0;
-      mostrarAjusteData();
-      break;
-    case 3:
-      rtcDisponivel = rtcLerDataHora(dataHoraEdicao);
-      if (!rtcDisponivel) dataHoraEdicao = dataHoraAtual;
-      entradaDataHora[0] = '\0';
-      tamanhoEntradaDataHora = 0;
-      tecladoLinha = 0;
-      tecladoColuna = 0;
-      mostrarAjusteHora();
-      break;
-    case 4: desligarBOX(); break;
-    case 5: reiniciarBOX(); break;
+    case 2: desligarBOX(); break;
+    case 3: reiniciarBOX(); break;
     default: mostrarMenu(); break;
   }
 }
 
-bool dataValida(byte dia, byte mes, byte ano) {
-  if (mes < 1 || mes > 12 || dia < 1) return false;
-  byte diasMes[] = {31,28,31,30,31,30,31,31,30,31,30,31};
-  bool bissexto = ((ano % 4) == 0);
-  if (bissexto) diasMes[1] = 29;
-  return dia <= diasMes[mes - 1];
-}
-
-void confirmarDataHora() {
-  byte esperado = (tela == AJUSTAR_DATA) ? 8 : 6;
-  if (tamanhoEntradaDataHora != esperado) {
-    somErro();
-    texto(5, 43, 1, CYAN, F("QUANTIDADE INCORRETA"));
-    delay(650);
-    if (tela == AJUSTAR_DATA) mostrarAjusteData();
-    else mostrarAjusteHora();
-    return;
-  }
-
-  if (tela == AJUSTAR_DATA) {
-    byte dia = (entradaDataHora[0] - '0') * 10 + (entradaDataHora[1] - '0');
-    byte mes = (entradaDataHora[3] - '0') * 10 + (entradaDataHora[4] - '0');
-    int anoCompleto = (entradaDataHora[6] - '0') * 1000 +
-                      (entradaDataHora[7] - '0') * 100 +
-                      (entradaDataHora[8] - '0') * 10 +
-                      (entradaDataHora[9] - '0');
-    if (anoCompleto < 2000 || anoCompleto > 2099 ||
-        !dataValida(dia, mes, (byte)(anoCompleto - 2000))) {
-      somErro();
-      texto(5, 43, 1, CYAN, F("DATA INVALIDA"));
-      delay(650);
-      mostrarAjusteData();
-      return;
-    }
-    dataHoraEdicao.dia = dia;
-    dataHoraEdicao.mes = mes;
-    dataHoraEdicao.ano = anoCompleto - 2000;
-  } else {
-    byte hora = (entradaDataHora[0] - '0') * 10 + (entradaDataHora[1] - '0');
-    byte minuto = (entradaDataHora[2] - '0') * 10 + (entradaDataHora[3] - '0');
-    byte segundo = (entradaDataHora[4] - '0') * 10 + (entradaDataHora[5] - '0');
-    if (hora > 23 || minuto > 59 || segundo > 59) {
-      somErro();
-      texto(5, 43, 1, CYAN, F("HORA INVALIDA"));
-      delay(650);
-      mostrarAjusteHora();
-      return;
-    }
-    dataHoraEdicao.hora = hora;
-    dataHoraEdicao.minuto = minuto;
-    dataHoraEdicao.segundo = segundo;
-  }
-
-  rtcGravarDataHora(dataHoraEdicao);
-  rtcDisponivel = rtcLerDataHora(dataHoraAtual);
-  if (rtcDisponivel) somSucesso();
-  else somErro();
-  mostrarConfig();
-}
-
-void selecionarTeclaDataHora() {
-  if (!rtcDisponivel) {
-    mostrarConfig();
-    return;
-  }
-
-  if (tecladoLinha == TECLADO_LINHA_ACOES) {
-    if (tecladoColuna == 0) {
-      if (tamanhoEntradaDataHora > 0) {
-        if (tela == AJUSTAR_DATA) {
-          byte posicao = strlen(entradaDataHora);
-          if (posicao > 0 && entradaDataHora[posicao - 1] == '/') posicao--;
-          if (posicao > 0) posicao--;
-          if (posicao > 0 && entradaDataHora[posicao - 1] == '/') posicao--;
-          entradaDataHora[posicao] = '\0';
-        } else {
-          entradaDataHora[--tamanhoEntradaDataHora] = '\0';
-        }
-        tamanhoEntradaDataHora--;
-        somApagar();
-      }
-    } else if (tecladoColuna == 1) {
-      byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
-      if (tamanhoEntradaDataHora < limite) {
-        if (tela == AJUSTAR_DATA &&
-            (tamanhoEntradaDataHora == 2 || tamanhoEntradaDataHora == 4)) {
-          byte posicao = strlen(entradaDataHora);
-          entradaDataHora[posicao++] = '/';
-          entradaDataHora[posicao] = '\0';
-        }
-        byte posicao = strlen(entradaDataHora);
-        entradaDataHora[posicao++] = '0';
-        entradaDataHora[posicao] = '\0';
-        tamanhoEntradaDataHora++;
-      }
-    } else if (tecladoColuna == 2) {
-      confirmarDataHora();
-      return;
-    } else {
-      mostrarConfig();
-      return;
-    }
-  } else if (tecladoLinha < 3 && tecladoColuna < 3) {
-    char tecla = '1' + tecladoLinha * 3 + tecladoColuna;
-    byte limite = (tela == AJUSTAR_DATA) ? 8 : 6;
-    if (tamanhoEntradaDataHora < limite) {
-      if (tela == AJUSTAR_DATA &&
-          (tamanhoEntradaDataHora == 2 || tamanhoEntradaDataHora == 4)) {
-        byte posicao = strlen(entradaDataHora);
-        entradaDataHora[posicao++] = '/';
-        entradaDataHora[posicao] = '\0';
-      }
-      byte posicao = strlen(entradaDataHora);
-      entradaDataHora[posicao++] = tecla;
-      entradaDataHora[posicao] = '\0';
-      tamanhoEntradaDataHora++;
-    }
-  }
-
-  if (tela == AJUSTAR_DATA) mostrarAjusteData();
-  else mostrarAjusteHora();
-}
-
-
 void atualizarNavegacao() {
   if (millis() - ultimoMovimento < 220) return;
-
-  if (tela == AJUSTAR_DATA || tela == AJUSTAR_HORA) {
-    int dx = lerDirecaoX();
-    int dy = lerDirecaoY();
-    if (dx == 0 && dy == 0) return;
-
-    if (tecladoLinha == TECLADO_LINHA_ACOES) {
-      if (dx != 0) {
-        int novaColuna = (int)tecladoColuna + dx;
-        if (novaColuna < 0) novaColuna = 0;
-        if (novaColuna > 3) novaColuna = 3;
-        tecladoColuna = novaColuna;
-      }
-      if (dy < 0) {
-        const int centrosAcoes[4] = {15, 49, 85, 114};
-        int centro = centrosAcoes[tecladoColuna];
-        int melhor = 0;
-        int menor = 32767;
-        const int centrosNumeros[3] = {32, 67, 102};
-        for (byte i = 0; i < 3; i++) {
-          int distancia = abs(centrosNumeros[i] - centro);
-          if (distancia < menor) { menor = distancia; melhor = i; }
-        }
-        tecladoLinha = 2;
-        tecladoColuna = melhor;
-      }
-    } else {
-      if (dx != 0) {
-        int novaColuna = (int)tecladoColuna + dx;
-        if (novaColuna < 0) novaColuna = 0;
-        if (novaColuna > 2) novaColuna = 2;
-        tecladoColuna = novaColuna;
-      }
-      if (dy < 0 && tecladoLinha > 0) {
-        tecladoLinha--;
-      } else if (dy > 0 && tecladoLinha < 2) {
-        tecladoLinha++;
-      } else if (dy > 0 && tecladoLinha == 2) {
-        const int centrosAcoes[4] = {15, 49, 85, 114};
-        const int centrosNumeros[3] = {32, 67, 102};
-        int centro = centrosNumeros[tecladoColuna];
-        int melhor = 0;
-        int menor = 32767;
-        for (byte i = 0; i < 4; i++) {
-          int distancia = abs(centrosAcoes[i] - centro);
-          if (distancia < menor) { menor = distancia; melhor = i; }
-        }
-        tecladoLinha = TECLADO_LINHA_ACOES;
-        tecladoColuna = melhor;
-      }
-    }
-
-    ultimoMovimento = millis();
-    somNavegacao();
-    if (tela == AJUSTAR_DATA) mostrarAjusteData();
-    else mostrarAjusteHora();
-    return;
-  }
 
   if (tela == FILE_EDIT) {
     int dx = lerDirecaoX();
@@ -1706,10 +1302,6 @@ void atualizarBotao() {
     case AJUSTAR_ICONES:
       mostrarConfig();
       break;
-    case AJUSTAR_DATA:
-    case AJUSTAR_HORA:
-      selecionarTeclaDataHora();
-      break;
     case FILE_LIST:
       abrirArquivoSelecionado();
       break;
@@ -1741,7 +1333,6 @@ void setup() {
   calibrarJoystick();
   inicializarBoxFiles();
   carregarConfiguracoes();
-  iniciarRTC();
   iniciado = true;
   somInicializacao();
   animacaoInicio();
@@ -1751,14 +1342,6 @@ void setup() {
 
 void loop() {
   if (!iniciado) return;
-  if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 100) {
-    ultimaAtualizacaoRelogio = millis();
-    DataHoraRTC horarioAtual;
-    bool horarioDisponivel = rtcLerDataHora(horarioAtual);
-    bool mudou = !relogioMenuInicializado || (horarioDisponivel != relogioMenuDisponivel);
-    if (horarioDisponivel && relogioMenuDisponivel && dataHoraMenuMudou(horarioAtual, dataHoraMenuAnterior)) mudou = true;
-    if (mudou) mostrarMenu();
-  }
   atualizarNavegacao();
   atualizarBotao();
 }
