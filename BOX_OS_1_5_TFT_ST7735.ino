@@ -340,6 +340,73 @@ bool botaoPressionado() {
   return false;
 }
 
+const float vertices[8][3] PROGMEM = {
+  {-1,-1,-1}, {1,-1,-1},
+  {1,1,-1}, {-1,1,-1},
+  {-1,-1,1}, {1,-1,1},
+  {1,1,1}, {-1,1,1}
+};
+
+const byte arestas[12][2] PROGMEM = {
+  {0,1},{1,2},{2,3},{3,0},
+  {4,5},{5,6},{6,7},{7,4},
+  {0,4},{1,5},{2,6},{3,7}
+};
+
+void desenharCubo(float angulo, float pulo) {
+  int px[8], py[8];
+  const int centroX = displayTFT.width() / 2;
+  const int centroY = displayTFT.height() / 2 + 10;
+
+  float ca = cos(angulo);
+  float sa = sin(angulo);
+  float cb = cos(angulo * 0.65);
+  float sb = sin(angulo * 0.65);
+
+  for (byte i = 0; i < 8; i++) {
+    float x = pgm_read_float(&vertices[i][0]) * 19;
+    float y = pgm_read_float(&vertices[i][1]) * 19;
+    float z = pgm_read_float(&vertices[i][2]) * 19;
+
+    float xr = x * ca - z * sa;
+    float zr = x * sa + z * ca;
+    float yr = y * cb - zr * sb;
+
+    px[i] = centroX + (int)xr;
+    py[i] = centroY - (int)yr - (int)pulo;
+  }
+
+  // Apaga somente a área do cubo; o título permanece visível.
+  displayTFT.fillRect(centroX - 23, centroY - 34, 46, 70, ST77XX_BLACK);
+
+  for (byte i = 0; i < 12; i++) {
+    byte a = pgm_read_byte(&arestas[i][0]);
+    byte b = pgm_read_byte(&arestas[i][1]);
+    linha(px[a], py[a], px[b], py[b], CYAN);
+  }
+}
+
+void animacaoInicio() {
+  displayTFT.fillScreen(ST77XX_BLACK);
+  textoCentro(displayTFT.width() / 2, 7, 3, CYAN, F("BOX OS"));
+  textoCentro(displayTFT.width() / 2, 30, 1, GRAY, F("VERSAO 1.5"));
+
+  for (byte frame = 0; frame < 30; frame++) {
+    unsigned long inicioFrame = millis();
+    float p = frame / 29.0;
+    float angulo = p * 6.28318;
+    float pulo = 12.0 * sin(3.14159 * p);
+
+    desenharCubo(angulo, pulo);
+
+    // Ritmo-alvo de 30 quadros por segundo.
+    while (millis() - inicioFrame < 33) {
+      delay(1);
+    }
+  }
+}
+
+
 
 void mostrarMenu() {
   tela = MENU;
@@ -1236,6 +1303,7 @@ void setup() {
   carregarConfiguracoes();
   iniciado = true;
   somInicializacao();
+  animacaoInicio();
   mostrarMenu();
 }
 
