@@ -28,7 +28,7 @@ Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define RED F("#F04B4B")
 
 const byte TOTAL_APPS = 2;
-const byte TOTAL_CONFIG = 4;
+const byte TOTAL_CONFIG = 5;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
@@ -40,8 +40,9 @@ const __FlashStringHelper *nomeApp(byte indice) {
 const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
   switch (indice) {
     case 0: return F("Tamanho da Fonte");
-    case 1: return F("Desligar");
-    case 2: return F("Reiniciar");
+    case 1: return F("Rotacao da Tela");
+    case 2: return F("Desligar");
+    case 3: return F("Reiniciar");
     default: return F("Voltar");
   }
 }
@@ -51,6 +52,7 @@ enum Screen {
   MENU,
   CONFIG,
   AJUSTAR_FONTE,
+  AJUSTAR_ROTACAO,
   FILE_LIST,
   FILE_VIEW,
   FILE_EDIT
@@ -62,6 +64,7 @@ byte selecionado = 0;
 byte configSelecionada = 0;
 
 byte tamanhoFonte = 1;
+byte rotacaoTela = 3;
 byte configPrimeira = 0;
 
 const int CONFIG_EEPROM_BASE = 1008;
@@ -139,26 +142,36 @@ void mostrarTela() {
 
 void salvarConfiguracoes() {
   EEPROM.update(CONFIG_EEPROM_BASE, CONFIG_MAGIC);
-  EEPROM.update(CONFIG_EEPROM_BASE + 1, 2);
+  EEPROM.update(CONFIG_EEPROM_BASE + 1, 3);
   EEPROM.update(CONFIG_EEPROM_BASE + 2, tamanhoFonte);
-  EEPROM.update(CONFIG_EEPROM_BASE + 3, 2);
+  EEPROM.update(CONFIG_EEPROM_BASE + 3, rotacaoTela);
   EEPROM.update(CONFIG_EEPROM_BASE + 4,
-    (byte)(CONFIG_MAGIC ^ tamanhoFonte ^ 2));
+    (byte)(CONFIG_MAGIC ^ tamanhoFonte ^ rotacaoTela ^ 3));
 }
 
 void carregarConfiguracoes() {
   byte assinatura = EEPROM.read(CONFIG_EEPROM_BASE);
   byte versao = EEPROM.read(CONFIG_EEPROM_BASE + 1);
   byte fonte = EEPROM.read(CONFIG_EEPROM_BASE + 2);
-  byte valorLegado = EEPROM.read(CONFIG_EEPROM_BASE + 3);
+  byte valorAntigo = EEPROM.read(CONFIG_EEPROM_BASE + 3);
   byte checksum = EEPROM.read(CONFIG_EEPROM_BASE + 4);
 
-  if (assinatura == CONFIG_MAGIC && versao == 2 &&
-      fonte >= 1 && fonte <= 4 && valorLegado >= 1 && valorLegado <= 4 &&
-      checksum == (byte)(CONFIG_MAGIC ^ fonte ^ valorLegado)) {
+  if (assinatura == CONFIG_MAGIC && versao == 3 &&
+      fonte >= 1 && fonte <= 4 && valorAntigo <= 3 &&
+      checksum == (byte)(CONFIG_MAGIC ^ fonte ^ valorAntigo ^ 3)) {
     tamanhoFonte = fonte;
+    rotacaoTela = valorAntigo;
+  } else if (assinatura == CONFIG_MAGIC && versao == 2 &&
+             fonte >= 1 && fonte <= 4 && valorAntigo >= 1 &&
+             valorAntigo <= 4 &&
+             checksum == (byte)(CONFIG_MAGIC ^ fonte ^ valorAntigo)) {
+    // Mantem a fonte das versoes anteriores e preserva a orientacao atual.
+    tamanhoFonte = fonte;
+    rotacaoTela = 3;
+    salvarConfiguracoes();
   } else {
     tamanhoFonte = 1;
+    rotacaoTela = 3;
     salvarConfiguracoes();
   }
 }
@@ -470,6 +483,34 @@ void mostrarConfig() {
   }
   texto(5, 137, 1, GRAY, F("SETAS: NAVEGAR"));
   texto(5, 148, 1, CYAN, F("SW: SELECIONAR"));
+  mostrarTela();
+}
+
+void mostrarAjusteRotacao() {
+  tela = AJUSTAR_ROTACAO;
+  limpar();
+
+  texto(5, 5, 3, CYAN, F("ROTACAO DA TELA"));
+  linha(5, 23, 123, 23, GRAY);
+
+  const __FlashStringHelper *opcoes[4] = {
+    F("0 GRAUS"),
+    F("90 GRAUS"),
+    F("180 GRAUS"),
+    F("270 GRAUS")
+  };
+
+  for (byte i = 0; i < 4; i++) {
+    int y = 34 + i * 20;
+    if (i == rotacaoTela) {
+      linha(4, y - 3, 124, y - 3, CYAN);
+      linha(4, y + 15, 124, y + 15, CYAN);
+    }
+    texto(9, y, 1, i == rotacaoTela ? CYAN : WHITE, opcoes[i]);
+  }
+
+  texto(5, 126, 1, GRAY, F("ESQ/DIR: GIRAR"));
+  texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
   mostrarTela();
 }
 
@@ -1156,8 +1197,9 @@ int pontos = 0;
 void selecionarConfig() {
   switch (configSelecionada) {
     case 0: mostrarAjusteFonte(); break;
-    case 1: desligarBOX(); break;
-    case 2: reiniciarBOX(); break;
+    case 1: mostrarAjusteRotacao(); break;
+    case 2: desligarBOX(); break;
+    case 3: reiniciarBOX(); break;
     default: mostrarMenu(); break;
   }
 }
@@ -1244,7 +1286,7 @@ void atualizarNavegacao() {
   }
 
   int direcao;
-  if (tela == AJUSTAR_FONTE) {
+  if (tela == AJUSTAR_FONTE || tela == AJUSTAR_ROTACAO) {
     direcao = lerDirecaoX();
     if (direcao == 0) return;
   } else {
@@ -1269,6 +1311,12 @@ void atualizarNavegacao() {
     salvarConfiguracoes();
     mostrarAjusteFonte();
   }
+  else if (tela == AJUSTAR_ROTACAO) {
+    rotacaoTela = (rotacaoTela + 4 + direcao) % 4;
+    displayTFT.setRotation(rotacaoTela);
+    salvarConfiguracoes();
+    mostrarAjusteRotacao();
+  }
 }
 
 void atualizarBotao() {
@@ -1282,6 +1330,7 @@ void atualizarBotao() {
       selecionarConfig();
       break;
     case AJUSTAR_FONTE:
+    case AJUSTAR_ROTACAO:
       mostrarConfig();
       break;
     case FILE_LIST:
@@ -1315,6 +1364,7 @@ void setup() {
   calibrarJoystick();
   inicializarBoxFiles();
   carregarConfiguracoes();
+  displayTFT.setRotation(rotacaoTela);
   iniciado = true;
   somInicializacao();
   animacaoInicio();
