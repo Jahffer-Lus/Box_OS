@@ -359,64 +359,6 @@ bool botaoPressionado() {
 }
 
 
-const float vertices[8][3] PROGMEM = {
-  {-1,-1,-1}, {1,-1,-1},
-  {1,1,-1}, {-1,1,-1},
-  {-1,-1,1}, {1,-1,1},
-  {1,1,1}, {-1,1,1}
-};
-
-const byte arestas[12][2] PROGMEM = {
-  {0,1},{1,2},{2,3},{3,0},
-  {4,5},{5,6},{6,7},{7,4},
-  {0,4},{1,5},{2,6},{3,7}
-};
-
-void desenharCubo(float angulo, float pulo) {
-  int px[8], py[8];
-
-  float ca = cos(angulo);
-  float sa = sin(angulo);
-  float cb = cos(angulo * 0.65);
-  float sb = sin(angulo * 0.65);
-
-  for (byte i = 0; i < 8; i++) {
-    float x = pgm_read_float(&vertices[i][0]) * 23;
-    float y = pgm_read_float(&vertices[i][1]) * 23;
-    float z = pgm_read_float(&vertices[i][2]) * 23;
-
-    float xr = x * ca - z * sa;
-    float zr = x * sa + z * ca;
-    float yr = y * cb - zr * sb;
-
-    px[i] = 64 + (int)xr;
-    py[i] = 78 - (int)yr - (int)pulo;
-  }
-
-  limpar();
-  texto(37, 8, 3, CYAN, F("BOX OS"));
-  texto(51, 31, 1, GRAY, F("VERSAO 1.5"));
-
-  for (byte i = 0; i < 12; i++) {
-    byte a = pgm_read_byte(&arestas[i][0]);
-    byte b = pgm_read_byte(&arestas[i][1]);
-
-    linha(px[a], py[a], px[b], py[b], CYAN);
-  }
-}
-
-void animacaoInicio() {
-  for (byte frame = 0; frame < 30; frame++) {
-    float p = frame / 29.0;
-    float angulo = p * 6.28318;
-    float pulo = 28.0 * sin(3.14159 * p);
-
-    desenharCubo(angulo, pulo);
-    delay(100);
-  }
-}
-
-
 void mostrarMenu() {
   tela = MENU;
   limpar();
@@ -1335,7 +1277,6 @@ void setup() {
   carregarConfiguracoes();
   iniciado = true;
   somInicializacao();
-  animacaoInicio();
   mostrarMenu();
 }
 
