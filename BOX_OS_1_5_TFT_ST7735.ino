@@ -27,14 +27,13 @@ Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define ORANGE F("#F39A38")
 #define RED F("#F04B4B")
 
-const byte TOTAL_APPS = 3;
+const byte TOTAL_APPS = 2;
 const byte TOTAL_CONFIG = 5;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
     case 0: return F("BOX FILES");
-    case 1: return F("CONFIG");
-    default: return F("ANIMACAO");
+    default: return F("CONFIG");
   }
 }
 
@@ -56,8 +55,7 @@ enum Screen {
   AJUSTAR_ROTACAO,
   FILE_LIST,
   FILE_VIEW,
-  FILE_EDIT,
-  ANIMACAO
+  FILE_EDIT
 };
 
 Screen tela = MENU;
@@ -81,8 +79,6 @@ unsigned long ultimoMovimento = 0;
 unsigned long ultimoBotao = 0;
 bool iniciado = false;
 bool ultimoEstadoBotao = HIGH;
-unsigned long ultimoFrameAnimacao = 0;
-byte frameAnimacao = 0;
 
 
 const byte FILE_MAGIC_0 = 'B';
@@ -417,30 +413,6 @@ void desenharCubo(float angulo, float pulo) {
   }
 }
 
-void mostrarAnimacaoApp() {
-  tela = ANIMACAO;
-  limpar();
-  textoCentro(displayTFT.width() / 2, 7, 2, CYAN, F("BOX ANIMACAO"));
-  textoCentro(displayTFT.width() / 2, displayTFT.height() - 13, 1, GRAY, F("SW: VOLTAR"));
-  frameAnimacao = 0;
-  ultimoFrameAnimacao = 0;
-}
-
-void atualizarFrameAnimacao() {
-  if (tela != ANIMACAO) return;
-
-  unsigned long agora = millis();
-  if (agora - ultimoFrameAnimacao < 33) return;
-  ultimoFrameAnimacao = agora;
-
-  float angulo = frameAnimacao * 0.08;
-  float pulo = 7.0 * sin(frameAnimacao * 0.10);
-  desenharCubo(angulo, pulo);
-  frameAnimacao++;
-}
-
-
-
 void mostrarMenu() {
   tela = MENU;
   limpar();
@@ -580,8 +552,7 @@ void reiniciarBOX() {
 void abrirAplicativo() {
   switch (selecionado) {
     case 0: selecionadoArquivo = 0; mostrarListaArquivos(); break;
-    case 1: configSelecionada = 0; mostrarConfig(); break;
-    default: mostrarAnimacaoApp(); break;
+    default: configSelecionada = 0; mostrarConfig(); break;
   }
 }
 
@@ -1349,9 +1320,6 @@ void atualizarBotao() {
     case FILE_EDIT:
       selecionarTeclaEditor();
       break;
-    case ANIMACAO:
-      mostrarMenu();
-      break;
   }
 }
 
@@ -1385,5 +1353,4 @@ void loop() {
   if (!iniciado) return;
   atualizarNavegacao();
   atualizarBotao();
-  atualizarFrameAnimacao();
 }
