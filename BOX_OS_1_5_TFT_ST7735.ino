@@ -61,7 +61,7 @@ Screen tela = MENU;
 byte selecionado = 0;
 byte configSelecionada = 0;
 
-byte tamanhoFonte = 2;
+byte tamanhoFonte = 1;
 byte configPrimeira = 0;
 
 const int CONFIG_EEPROM_BASE = 1008;
@@ -124,13 +124,16 @@ const byte ACAO_OK = 2;
 
 
 void limpar() {
-  displayTFT.fillScreen(ST77XX_BLACK);
+  for (int y = 0; y < 160; y += 4) {
+    displayTFT.fillRect(0, y, 128, 4, ST77XX_BLACK);
+    delay(4);
+  }
 }
 
 
 void salvarConfiguracoes() {
   EEPROM.update(CONFIG_EEPROM_BASE, CONFIG_MAGIC);
-  EEPROM.update(CONFIG_EEPROM_BASE + 1, 1);
+  EEPROM.update(CONFIG_EEPROM_BASE + 1, 2);
   EEPROM.update(CONFIG_EEPROM_BASE + 2, tamanhoFonte);
   EEPROM.update(CONFIG_EEPROM_BASE + 3, 2);
   EEPROM.update(CONFIG_EEPROM_BASE + 4,
@@ -144,12 +147,12 @@ void carregarConfiguracoes() {
   byte valorLegado = EEPROM.read(CONFIG_EEPROM_BASE + 3);
   byte checksum = EEPROM.read(CONFIG_EEPROM_BASE + 4);
 
-  if (assinatura == CONFIG_MAGIC && versao == 1 &&
+  if (assinatura == CONFIG_MAGIC && versao == 2 &&
       fonte >= 1 && fonte <= 4 && valorLegado >= 1 && valorLegado <= 4 &&
       checksum == (byte)(CONFIG_MAGIC ^ fonte ^ valorLegado)) {
     tamanhoFonte = fonte;
   } else {
-    tamanhoFonte = 2;
+    tamanhoFonte = 1;
     salvarConfiguracoes();
   }
 }
