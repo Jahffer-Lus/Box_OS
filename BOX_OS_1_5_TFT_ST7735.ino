@@ -124,10 +124,15 @@ const byte ACAO_OK = 2;
 
 
 void limpar() {
-  for (int y = 0; y < 160; y += 4) {
-    displayTFT.fillRect(0, y, 128, 4, ST77XX_BLACK);
-    delay(4);
-  }
+  // Apaga a tela inteira de uma vez e prepara o novo quadro sem exibi-lo.
+  displayTFT.enableDisplay(false);
+  displayTFT.fillScreen(ST77XX_BLACK);
+  delay(500);
+}
+
+void mostrarTela() {
+  // Mostra o quadro pronto de uma só vez.
+  displayTFT.enableDisplay(true);
 }
 
 
@@ -357,6 +362,7 @@ void mostrarMenu() {
   linha(5, 137, 123, 137, DARK);
   texto(5, 141, 1, GRAY, F("SETAS: NAVEGAR"));
   texto(5, 151, 1, CYAN, F("SW: ABRIR"));
+  mostrarTela();
 }
 
 
@@ -382,6 +388,7 @@ void mostrarConfig() {
   }
   texto(5, 137, 1, GRAY, F("SETAS: NAVEGAR"));
   texto(5, 148, 1, CYAN, F("SW: SELECIONAR"));
+  mostrarTela();
 }
 
 void mostrarAjusteFonte() {
@@ -401,12 +408,14 @@ void mostrarAjusteFonte() {
 
   texto(5, 121, 1, GRAY, F("ESQ/DIR: ALTERAR"));
   texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
+  mostrarTela();
 }
 
 void desligarBOX() {
   limpar();
   texto(30, 65, 3, CYAN, F("BOX OS"));
   texto(31, 91, 2, WHITE, F("DESLIGADO"));
+  mostrarTela();
 
   while (true) {
     delay(100);
@@ -418,14 +427,17 @@ void reiniciarBOX() {
   for (byte repeticao = 0; repeticao < 3; repeticao++) {
     limpar();
     texto(20, 70, 2, CYAN, F("Reiniciando."));
+    mostrarTela();
     delay(400);
 
     limpar();
     texto(20, 70, 2, CYAN, F("Reiniciando.."));
+    mostrarTela();
     delay(400);
 
     limpar();
     texto(20, 70, 2, CYAN, F("Reiniciando..."));
+    mostrarTela();
     delay(400);
   }
 
@@ -672,6 +684,7 @@ void mostrarListaArquivos() {
   snprintf_P(memoria, sizeof(memoria), PSTR("%u/5 ARQUIVOS"), qtdArquivos);
   texto(5, 137, 1, GRAY, memoria);
   texto(5, 147, 1, CYAN, F("SW: ABRIR / SELECIONAR"));
+  mostrarTela();
 }
 
 void criarArquivoNovo() {
@@ -689,6 +702,7 @@ void criarArquivoNovo() {
     limpar();
     texto(5, 55, 2, CYAN, F("MEMORIA CHEIA"));
     texto(5, 85, 1, WHITE, F("APAGUE UM ARQUIVO"));
+    mostrarTela();
     delay(1000);
     mostrarListaArquivos();
     return;
@@ -767,6 +781,7 @@ void mostrarLeitorArquivo() {
     texto(5, 141, 1, CYAN, acao);
     texto(5, 151, 1, GRAY, F("ESQ/DIR: ACAO  SW: OK"));
   }
+  mostrarTela();
 }
 
 byte quantidadeTeclasQwerty(byte linhaTeclado) {
@@ -903,6 +918,7 @@ void mostrarEditorArquivo() {
 
   texto(4, 132, 1, GRAY, F("JOY: MOVER  SW: USAR"));
   texto(4, 144, 1, CYAN, F("OK SALVA  DEL APAGA"));
+  mostrarTela();
 }
 
 bool nomeArquivoEmUso(const char *nome, byte ignorarSlot) {
@@ -955,6 +971,7 @@ void selecionarTeclaEditor() {
         somErro();
         limpar();
         texto(8, 60, 1, CYAN, F("NOME JA EXISTE"));
+        mostrarTela();
         delay(800);
         mostrarEditorArquivo();
         return;
