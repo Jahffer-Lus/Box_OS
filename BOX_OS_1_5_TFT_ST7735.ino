@@ -40,25 +40,21 @@ RtcDS1302<ThreeWire> Rtc(rtcFio);
 #define ORANGE F("#F39A38")
 #define RED F("#F04B4B")
 
-const byte TOTAL_APPS = 5;
+const byte TOTAL_APPS = 3;
 const byte TOTAL_CONFIG = 7;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
-    case 0: return F("JOGOS");
-    case 1: return F("TERMINAL");
-    case 2: return F("MONITOR");
-    case 3: return F("CONFIG");
+    case 0: return F("MONITOR");
+    case 1: return F("CONFIG");
     default: return F("BOX FILES");
   }
 }
 
 const __FlashStringHelper *iconeApp(byte indice) {
   switch (indice) {
-    case 0: return F("J");
-    case 1: return F("T");
-    case 2: return F("M");
-    case 3: return F("C");
+    case 0: return F("M");
+    case 1: return F("C");
     default: return F("F");
   }
 }
@@ -78,16 +74,12 @@ const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
 
 enum Screen {
   MENU,
-  JOGOS,
-  TERMINAL,
   MONITOR,
   CONFIG,
-  DINO,
   AJUSTAR_FONTE,
   AJUSTAR_ICONES,
   AJUSTAR_DATA,
   AJUSTAR_HORA,
-  TERM_EDIT,
   FILE_LIST,
   FILE_VIEW,
   FILE_EDIT
@@ -123,11 +115,6 @@ bool relogioMenuInicializado = false;
 bool relogioMenuDisponivel = false;
 char entradaDataHora[11] = "";
 byte tamanhoEntradaDataHora = 0;
-
-char terminalEntrada[17] = "";
-byte terminalTamanho = 0;
-char terminalResposta[25] = "DIGITE AJUDA";
-bool terminalTecladoMinimizado = false;
 
 int centroX = 512;
 int centroY = 512;
@@ -171,14 +158,11 @@ bool editandoNomeArquivo = false;
 char nomeTemporario[9];
 byte tamanhoNomeTemporario = 0;
 
-void mostrarJogos();
-void mostrarTerminal();
 void mostrarMonitor();
 void atualizarMonitor();
 void mostrarListaArquivos();
 void mostrarLeitorArquivo();
 void mostrarEditorArquivo();
-void mostrarTerminal();
 void mostrarConfig();
 void mostrarAjusteData();
 void mostrarAjusteHora();
@@ -311,18 +295,6 @@ void somApagar() {
   delay(75);
   tone(BUZZER_PIN, 420, 100);
   delay(105);
-  noTone(BUZZER_PIN);
-}
-
-void somPulo() {
-  tone(BUZZER_PIN, 980, 85);
-}
-
-void somGameOver() {
-  tone(BUZZER_PIN, 520, 130);
-  delay(140);
-  tone(BUZZER_PIN, 330, 220);
-  delay(230);
   noTone(BUZZER_PIN);
 }
 
@@ -737,8 +709,8 @@ void mostrarAjusteIcones() {
   linha(5, 23, 123, 23, GRAY);
 
   texto(8, 34, 1, GRAY, F("PREVIA DO ICONE:"));
-  textoIcone(18, 60, tamanhoIcone, WHITE, F("🎮"));
-  texto(55, 69, 2, CYAN, F("JOGOS"));
+  textoIcone(18, 60, tamanhoIcone, WHITE, F("BOX"));
+  texto(55, 69, 2, CYAN, F("FILES"));
 
   char valor[3];
   snprintf_P(valor, sizeof(valor), PSTR("%d"), tamanhoIcone);
@@ -784,163 +756,10 @@ void reiniciarBOX() {
 
 void abrirAplicativo() {
   switch (selecionado) {
-
-    case 0:
-      mostrarJogos();
-      break;
-
-    case 1:
-      terminalEntrada[0] = '\0';
-      terminalTamanho = 0;
-      tecladoLinha = 0;
-      tecladoColuna = 0;
-      terminalTecladoMinimizado = false;
-      strcpy(terminalResposta, "DIGITE AJUDA");
-      mostrarTerminal();
-      break;
-
-    case 2:
-      mostrarMonitor();
-      break;
-
-    case 3:
-      configSelecionada = 0;
-      mostrarConfig();
-      break;
-
-    case 4:
-      selecionadoArquivo = 0;
-      mostrarListaArquivos();
-      break;
+    case 0: mostrarMonitor(); break;
+    case 1: configSelecionada = 0; mostrarConfig(); break;
+    default: selecionadoArquivo = 0; mostrarListaArquivos(); break;
   }
-}
-
-void mostrarJogos() {
-  tela = JOGOS;
-  limpar();
-
-  texto(5, 5, 3, CYAN, F("JOGOS"));
-  linha(5, 23, 123, 23, GRAY);
-
-  textoIcone(9, 53, tamanhoIcone, WHITE, F("🦖"));
-  texto(39, 56, 2, CYAN, F("DINO_RUN"));
-
-  linha(5, 138, 123, 138, DARK);
-  texto(5, 145, 1, CYAN, F("SW: ABRIR"));
-}
-
-void mostrarTerminal() {
-  tela = TERM_EDIT;
-  limpar();
-  texto(5, 4, 2, CYAN, F("TERMINAL"));
-  linha(5, 21, 123, 21, GRAY);
-  texto(5, 27, 1, GRAY, F("BOX>"));
-  texto(32, 27, 1, WHITE, terminalEntrada);
-  texto(5, 43, 1, CYAN, terminalResposta);
-
-  if (terminalTecladoMinimizado) {
-    textoCentro(64, 82, 2, CYAN, F("TECLADO OCULTO"));
-    textoCentro(64, 106, 1, WHITE, F("SW: MOSTRAR TECLADO"));
-    texto(5, 149, 1, GRAY, F("RESULTADOS DO TERMINAL"));
-    return;
-  }
-
-  for (byte row = 0; row < 4; row++) {
-    byte total = quantidadeTeclasQwerty(row);
-    int xInicio = inicioLinhaQwerty(row);
-    int y = 62 + row * 13;
-    for (byte col = 0; col < total; col++) {
-      int x = xInicio + col * 12;
-      bool ativo = (tecladoLinha == row && tecladoColuna == col);
-      retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
-      char letra[2] = { lerTeclaQwerty(row, col), '\0' };
-      textoCentro(x + 5, y + 6, 1, ativo ? CYAN : WHITE, letra);
-    }
-  }
-
-  bool a0 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 0;
-  bool a1 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 1;
-  bool a2 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 2;
-  bool a3 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 3;
-  bool a4 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 4;
-  retanguloArredondado(3, 116, 25, 12, 2, a0 ? CYAN : DARK);
-  textoCentro(15, 122, 1, a0 ? CYAN : WHITE, F("DEL"));
-  retanguloArredondado(30, 116, 38, 12, 2, a1 ? CYAN : DARK);
-  textoCentro(49, 122, 1, a1 ? CYAN : WHITE, F("ESP"));
-  retanguloArredondado(70, 116, 30, 12, 2, a2 ? CYAN : DARK);
-  textoCentro(85, 122, 1, a2 ? CYAN : WHITE, F("ENTER"));
-  retanguloArredondado(102, 116, 24, 12, 2, a3 ? CYAN : DARK);
-  textoCentro(114, 122, 1, a3 ? CYAN : WHITE, F("SAIR"));
-
-  retanguloArredondado(3, 132, 123, 12, 2, a4 ? CYAN : DARK);
-  textoCentro(64, 138, 1, a4 ? CYAN : WHITE, F("MINIMIZAR"));
-  texto(5, 149, 1, GRAY, F("JOY: MOVER  SW: SELECIONAR"));
-}
-
-void executarComandoTerminal() {
-  if ((strcmp(terminalEntrada, "AJUDA") == 0 || strcmp(terminalEntrada, "HELP") == 0)) {
-    strcpy(terminalResposta, "HORA DATA TEMPO LIMPAR");
-  } else if ((strcmp(terminalEntrada, "HORA") == 0 || strcmp(terminalEntrada, "TIME") == 0)) {
-    if (rtcLerDataHora(dataHoraAtual)) {
-      snprintf_P(terminalResposta, sizeof(terminalResposta),
-        PSTR("HORA %02u:%02u:%02u"), dataHoraAtual.hora,
-        dataHoraAtual.minuto, dataHoraAtual.segundo);
-    } else strcpy(terminalResposta, "MODULO DE RELOGIO NAO DETECTADO");
-  } else if ((strcmp(terminalEntrada, "DATA") == 0 || strcmp(terminalEntrada, "DATE") == 0)) {
-    if (rtcLerDataHora(dataHoraAtual)) {
-      snprintf_P(terminalResposta, sizeof(terminalResposta),
-        PSTR("DATA %02u/%02u/20%02u"), dataHoraAtual.dia,
-        dataHoraAtual.mes, dataHoraAtual.ano);
-    } else strcpy(terminalResposta, "MODULO DE RELOGIO NAO DETECTADO");
-  } else if ((strcmp(terminalEntrada, "TEMPO") == 0 || strcmp(terminalEntrada, "UPTIME") == 0)) {
-    unsigned long segs = (millis() - inicioSistema) / 1000UL;
-    snprintf_P(terminalResposta, sizeof(terminalResposta),
-      PSTR("ATIVO %lu SEG"), segs);
-  } else if ((strcmp(terminalEntrada, "LIMPAR") == 0 || strcmp(terminalEntrada, "CLEAR") == 0)) {
-    strcpy(terminalResposta, "TELA LIMPA");
-  } else if (terminalTamanho == 0) {
-    strcpy(terminalResposta, "DIGITE AJUDA");
-  } else {
-    strcpy(terminalResposta, "COMANDO DESCONHECIDO");
-  }
-  terminalEntrada[0] = '\0';
-  terminalTamanho = 0;
-}
-
-void selecionarTeclaTerminal() {
-  if (terminalTecladoMinimizado) {
-    terminalTecladoMinimizado = false;
-    tecladoLinha = 0;
-    tecladoColuna = 0;
-    mostrarTerminal();
-    return;
-  }
-
-  if (tecladoLinha == TECLADO_LINHA_ACOES) {
-    if (tecladoColuna == 0) {
-      if (terminalTamanho > 0) terminalEntrada[--terminalTamanho] = '\0';
-    } else if (tecladoColuna == 1) {
-      if (terminalTamanho < 16) {
-        terminalEntrada[terminalTamanho++] = ' ';
-        terminalEntrada[terminalTamanho] = '\0';
-      }
-    } else if (tecladoColuna == 2) {
-      executarComandoTerminal();
-    } else if (tecladoColuna == 3) {
-      mostrarMenu();
-      return;
-    } else if (tecladoColuna == 4) {
-      terminalTecladoMinimizado = true;
-    }
-  } else {
-    char tecla = lerTeclaQwerty(tecladoLinha, tecladoColuna);
-    if (tecla && terminalTamanho < 16) {
-      terminalEntrada[terminalTamanho++] = tecla;
-      terminalEntrada[terminalTamanho] = '\0';
-      somClique();
-    }
-  }
-  mostrarTerminal();
 }
 
 void mostrarMonitor() {
@@ -949,8 +768,6 @@ void mostrarMonitor() {
 
   texto(5, 5, 3, CYAN, F("MONITOR"));
   linha(5, 23, 123, 23, GRAY);
-
-  desenharBarraArmazenamento(true);
 
   textoIcone(9, 57, tamanhoIcone, WHITE, F("📊"));
   texto(9, 76, 1, GRAY, F("TEMPO ATIVO:"));
@@ -961,8 +778,6 @@ void mostrarMonitor() {
 
 
 void atualizarMonitor() {
-  desenharBarraArmazenamento(true);
-
   unsigned long segundos = (millis() - inicioSistema) / 1000UL;
 
   unsigned int horas = segundos / 3600UL;
@@ -1588,102 +1403,6 @@ unsigned long ultimaFrameDino = 0;
 int obstaculoX = 120;
 int pontos = 0;
 
-void desenharDino() {
-  limpar();
-
-  texto(5, 5, 2, CYAN, F("DINO_RUN"));
-
-  char score[15];
-  snprintf_P(score, sizeof(score), PSTR("PONTOS: %d"), pontos);
-  texto(5, 24, 1, WHITE, score);
-
-  linha(5, 126, 123, 126, GRAY);
-
-  if (pulando) {
-    textoIcone(18, 75, tamanhoIcone, WHITE, F("🦖"));
-  } else {
-    textoIcone(18, 105, tamanhoIcone, WHITE, F("🦖"));
-  }
-
-  if (obstaculoX > 0) {
-    textoIcone(obstaculoX, 105, tamanhoIcone, WHITE, F("🌵"));
-  }
-
-  texto(5, 145, 1, CYAN, F("SW: SAIR"));
-}
-
-void iniciarDino() {
-  tela = DINO;
-  pulando = false;
-  gameOver = false;
-
-  pontos = 0;
-  obstaculoX = 120;
-
-  inicioObstaculo = millis();
-  ultimaFrameDino = millis();
-
-  desenharDino();
-}
-
-void atualizarDino() {
-  if (gameOver) {
-    if (botaoPressionado()) {
-      mostrarJogos();
-    }
-    return;
-  }
-
-  unsigned long agora = millis();
-  int y = analogRead(JOY_Y);
-
-  if (y < centroY - LIMITE_JOYSTICK && !pulando) {
-    pulando = true;
-    inicioPulo = agora;
-    somPulo();
-  }
-
-  if (pulando && agora - inicioPulo > 650) {
-    pulando = false;
-  }
-
-  if (agora - ultimaFrameDino >= 120) {
-    ultimaFrameDino = agora;
-
-    if (obstaculoX > -15) {
-      obstaculoX -= 3;
-    } else {
-      obstaculoX = 120;
-      pontos++;
-    }
-
-    if (obstaculoX <= 28 && obstaculoX >= 12 && !pulando) {
-      gameOver = true;
-      somGameOver();
-
-      limpar();
-      texto(20, 48, 3, CYAN, F("FIM DE JOGO"));
-
-      char score[15];
-      snprintf_P(score, sizeof(score), PSTR("PONTOS: %d"), pontos);
-      texto(37, 83, 2, WHITE, score);
-      texto(12, 130, 1, GRAY, F("SW: VOLTAR"));
-      return;
-    }
-
-    desenharDino();
-  }
-
-  if (digitalRead(JOY_SW) == LOW) {
-    delay(30);
-    if (digitalRead(JOY_SW) == LOW) {
-      mostrarJogos();
-      while (digitalRead(JOY_SW) == LOW) delay(5);
-    }
-  }
-}
-
-
 void selecionarConfig() {
   switch (configSelecionada) {
     case 0: mostrarAjusteFonte(); break;
@@ -1897,59 +1616,6 @@ void atualizarNavegacao() {
     return;
   }
 
-  if (tela == TERM_EDIT) {
-    if (terminalTecladoMinimizado) return;
-
-    int dx = lerDirecaoX();
-    int dy = lerDirecaoY();
-    if (dx == 0 && dy == 0) return;
-    if (tecladoLinha == TECLADO_LINHA_ACOES) {
-      if (dx != 0) {
-        int nc = (int)tecladoColuna + dx;
-        if (nc < 0) nc = 0;
-        if (nc > 4) nc = 4;
-        tecladoColuna = nc;
-      }
-      if (dy < 0) {
-        const int centros[5] = {15, 49, 85, 114, 64};
-        int centro = centros[tecladoColuna];
-        tecladoLinha = 3;
-        tecladoColuna = colunaQwertyMaisProxima(3, centro);
-      }
-    } else {
-      if (dx != 0) {
-        int nc = (int)tecladoColuna + dx;
-        int total = quantidadeTeclasQwerty(tecladoLinha);
-        if (nc < 0) nc = 0;
-        if (nc >= total) nc = total - 1;
-        tecladoColuna = nc;
-      }
-      if (dy < 0 && tecladoLinha > 0) {
-        int centro = centroTeclaQwerty(tecladoLinha, tecladoColuna);
-        tecladoLinha--;
-        tecladoColuna = colunaQwertyMaisProxima(tecladoLinha, centro);
-      } else if (dy > 0 && tecladoLinha < 3) {
-        int centro = centroTeclaQwerty(tecladoLinha, tecladoColuna);
-        tecladoLinha++;
-        tecladoColuna = colunaQwertyMaisProxima(tecladoLinha, centro);
-      } else if (dy > 0 && tecladoLinha == 3) {
-        int centro = centroTeclaQwerty(tecladoLinha, tecladoColuna);
-        const int centros[5] = {15, 49, 85, 114, 64};
-        byte melhor = 0;
-        int menor = 32767;
-        for (byte i = 0; i < 5; i++) {
-          int d = abs(centros[i] - centro);
-          if (d < menor) { menor = d; melhor = i; }
-        }
-        tecladoLinha = TECLADO_LINHA_ACOES;
-        tecladoColuna = melhor;
-      }
-    }
-    ultimoMovimento = millis();
-    mostrarTerminal();
-    return;
-  }
-
   if (tela == FILE_EDIT) {
     int dx = lerDirecaoX();
     int dy = lerDirecaoY();
@@ -2028,15 +1694,6 @@ void atualizarNavegacao() {
     return;
   }
 
-  if (tela == JOGOS) {
-    int direcaoJogo = lerDirecao();
-    if (direcaoJogo == 0) return;
-    ultimoMovimento = millis();
-    somNavegacao();
-    iniciarDino();
-    return;
-  }
-
   int direcao;
   if (tela == AJUSTAR_FONTE || tela == AJUSTAR_ICONES) {
     direcao = lerDirecaoX();
@@ -2078,12 +1735,6 @@ void atualizarBotao() {
     case MENU:
       abrirAplicativo();
       break;
-    case JOGOS:
-      iniciarDino();
-      break;
-    case TERM_EDIT:
-      selecionarTeclaTerminal();
-      break;
     case MONITOR:
       mostrarMenu();
       break;
@@ -2097,9 +1748,6 @@ void atualizarBotao() {
     case AJUSTAR_DATA:
     case AJUSTAR_HORA:
       selecionarTeclaDataHora();
-      break;
-    case DINO:
-      mostrarJogos();
       break;
     case FILE_LIST:
       abrirArquivoSelecionado();
@@ -2143,10 +1791,6 @@ void setup() {
 
 void loop() {
   if (!iniciado) return;
-  if (tela == DINO) {
-    atualizarDino();
-    return;
-  }
   if (tela == MONITOR && millis() - ultimaAtualizacao >= 1000) {
     ultimaAtualizacao = millis();
     atualizarMonitor();
