@@ -753,7 +753,8 @@ void mostrarLeitorArquivo() {
   linha(5, 23, 123, 23, GRAY);
 
   uint16_t inicio = (uint16_t)paginaArquivo * 90;
-  for (byte l = 0; l < 5; l++) {
+  // A tela está em rotação 3 (160x128); reserva espaço para as ações.
+  for (byte l = 0; l < 4; l++) {
     uint16_t pos = inicio + (uint16_t)l * 18;
     if (pos >= tamanhoConteudo) break;
     char trecho[19];
@@ -763,24 +764,24 @@ void mostrarLeitorArquivo() {
       n++;
     }
     trecho[n] = '\0';
-    texto(5, 31 + l * 18, 1, WHITE, trecho);
+    texto(5, 29 + l * 17, 1, WHITE, trecho);
   }
 
-  byte totalPaginas = (tamanhoConteudo + 89) / 90;
+  byte totalPaginas = (tamanhoConteudo + 71) / 72;
   if (totalPaginas == 0) totalPaginas = 1;
   char paginaTexto[16];
   snprintf_P(paginaTexto, sizeof(paginaTexto), PSTR("PAG %u/%u"), paginaArquivo + 1, totalPaginas);
-  texto(5, 124, 1, GRAY, paginaTexto);
+  texto(5, 99, 1, GRAY, paginaTexto);
 
   if (arquivoSlotAtual == 1) {
-    texto(5, 143, 1, CYAN, F("SW: VOLTAR"));
+    texto(5, 116, 1, CYAN, F("SW: VOLTAR"));
   } else {
     const __FlashStringHelper *acao = F("VOLTAR");
     if (acaoArquivo == 0) acao = F("EDITAR");
     else if (acaoArquivo == 1) acao = F("RENOMEAR");
     else if (acaoArquivo == 2) acao = F("APAGAR");
-    texto(5, 141, 1, CYAN, acao);
-    texto(5, 151, 1, GRAY, F("ESQ/DIR: ACAO  SW: OK"));
+    texto(5, 108, 1, CYAN, acao);
+    texto(5, 119, 1, GRAY, F("ESQ/DIR: ACAO SW: OK"));
   }
   mostrarTela();
 }
