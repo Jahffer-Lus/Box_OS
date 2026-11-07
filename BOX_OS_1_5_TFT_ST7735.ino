@@ -27,13 +27,14 @@ Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define ORANGE F("#F39A38")
 #define RED F("#F04B4B")
 
-const byte TOTAL_APPS = 2;
+const byte TOTAL_APPS = 3;
 const byte TOTAL_CONFIG = 5;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
     case 0: return F("BOX FILES");
-    default: return F("CONFIG");
+    case 1: return F("CONFIG");
+    default: return F("ANIMACAO");
   }
 }
 
@@ -55,7 +56,8 @@ enum Screen {
   AJUSTAR_ROTACAO,
   FILE_LIST,
   FILE_VIEW,
-  FILE_EDIT
+  FILE_EDIT,
+  ANIMACAO
 };
 
 Screen tela = MENU;
@@ -79,6 +81,8 @@ unsigned long ultimoMovimento = 0;
 unsigned long ultimoBotao = 0;
 bool iniciado = false;
 bool ultimoEstadoBotao = HIGH;
+unsigned long ultimoFrameAnimacao = 0;
+byte frameAnimacao = 0;
 
 
 const byte FILE_MAGIC_0 = 'B';
@@ -413,24 +417,26 @@ void desenharCubo(float angulo, float pulo) {
   }
 }
 
-void animacaoInicio() {
-  displayTFT.fillScreen(ST77XX_BLACK);
-  textoCentro(displayTFT.width() / 2, 7, 3, CYAN, F("BOX OS"));
-  textoCentro(displayTFT.width() / 2, 30, 1, GRAY, F("VERSAO 1.5"));
+void mostrarAnimacaoApp() {
+  tela = ANIMACAO;
+  limpar();
+  textoCentro(displayTFT.width() / 2, 7, 2, CYAN, F("BOX ANIMACAO"));
+  textoCentro(displayTFT.width() / 2, displayTFT.height() - 13, 1, GRAY, F("SW: VOLTAR"));
+  frameAnimacao = 0;
+  ultimoFrameAnimacao = 0;
+}
 
-  for (byte frame = 0; frame < 30; frame++) {
-    unsigned long inicioFrame = millis();
-    float p = frame / 29.0;
-    float angulo = p * 6.28318;
-    float pulo = 12.0 * sin(3.14159 * p);
+void atualizarFrameAnimacao() {
+  if (tela != ANIMACAO) return;
 
-    desenharCubo(angulo, pulo);
+  unsigned long agora = millis();
+  if (agora - ultimoFrameAnimacao < 33) return;
+  ultimoFrameAnimacao = agora;
 
-    // Ritmo-alvo de 30 quadros por segundo.
-    while (millis() - inicioFrame < 33) {
-      delay(1);
-    }
-  }
+  float angulo = frameAnimacao * 0.08;
+  float pulo = 7.0 * sin(frameAnimacao * 0.10);
+  desenharCubo(angulo, pulo);
+  frameAnimacao++;
 }
 
 
@@ -574,7 +580,8 @@ void reiniciarBOX() {
 void abrirAplicativo() {
   switch (selecionado) {
     case 0: selecionadoArquivo = 0; mostrarListaArquivos(); break;
-    default: configSelecionada = 0; mostrarConfig(); break;
+    case 1: configSelecionada = 0; mostrarConfig(); break;
+    default: mostrarAnimacaoApp(); break;
   }
 }
 
@@ -1342,6 +1349,9 @@ void atualizarBotao() {
     case FILE_EDIT:
       selecionarTeclaEditor();
       break;
+    case ANIMACAO:
+      mostrarMenu();
+      break;
   }
 }
 
@@ -1367,7 +1377,6 @@ void setup() {
   displayTFT.setRotation(rotacaoTela);
   iniciado = true;
   somInicializacao();
-  animacaoInicio();
   mostrarMenu();
 }
 
@@ -1376,4 +1385,5 @@ void loop() {
   if (!iniciado) return;
   atualizarNavegacao();
   atualizarBotao();
+  atualizarFrameAnimacao();
 }
