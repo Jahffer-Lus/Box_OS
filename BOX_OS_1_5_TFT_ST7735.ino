@@ -40,22 +40,20 @@ RtcDS1302<ThreeWire> Rtc(rtcFio);
 #define ORANGE F("#F39A38")
 #define RED F("#F04B4B")
 
-const byte TOTAL_APPS = 3;
+const byte TOTAL_APPS = 2;
 const byte TOTAL_CONFIG = 7;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
-    case 0: return F("MONITOR");
-    case 1: return F("CONFIG");
-    default: return F("BOX FILES");
+    case 0: return F("BOX FILES");
+    default: return F("CONFIG");
   }
 }
 
 const __FlashStringHelper *iconeApp(byte indice) {
   switch (indice) {
-    case 0: return F("M");
-    case 1: return F("C");
-    default: return F("F");
+    case 0: return F("F");
+    default: return F("C");
   }
 }
 
@@ -74,7 +72,6 @@ const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
 
 enum Screen {
   MENU,
-  MONITOR,
   CONFIG,
   AJUSTAR_FONTE,
   AJUSTAR_ICONES,
@@ -123,13 +120,11 @@ const int LIMITE_JOYSTICK = 130;
 
 unsigned long ultimoMovimento = 0;
 unsigned long ultimoBotao = 0;
-unsigned long ultimaAtualizacao = 0;
 unsigned long ultimaAtualizacaoRelogio = 0;
 
 bool iniciado = false;
 bool ultimoEstadoBotao = HIGH;
 
-unsigned long inicioSistema = 0;
 
 const byte FILE_MAGIC_0 = 'B';
 const byte FILE_MAGIC_1 = 'X';
@@ -158,8 +153,6 @@ bool editandoNomeArquivo = false;
 char nomeTemporario[9];
 byte tamanhoNomeTemporario = 0;
 
-void mostrarMonitor();
-void atualizarMonitor();
 void mostrarListaArquivos();
 void mostrarLeitorArquivo();
 void mostrarEditorArquivo();
@@ -756,44 +749,15 @@ void reiniciarBOX() {
 
 void abrirAplicativo() {
   switch (selecionado) {
-    case 0: mostrarMonitor(); break;
-    case 1: configSelecionada = 0; mostrarConfig(); break;
-    default: selecionadoArquivo = 0; mostrarListaArquivos(); break;
+    case 0: selecionadoArquivo = 0; mostrarListaArquivos(); break;
+    default: configSelecionada = 0; mostrarConfig(); break;
   }
 }
 
-void mostrarMonitor() {
-  tela = MONITOR;
-  limpar();
-
-  texto(5, 5, 3, CYAN, F("MONITOR"));
-  linha(5, 23, 123, 23, GRAY);
-
-  textoIcone(9, 57, tamanhoIcone, WHITE, F("📊"));
-  texto(9, 76, 1, GRAY, F("TEMPO ATIVO:"));
-
-  atualizarMonitor();
-  texto(5, 151, 1, CYAN, F("SW: VOLTAR"));
-}
 
 
-void atualizarMonitor() {
-  unsigned long segundos = (millis() - inicioSistema) / 1000UL;
 
-  unsigned int horas = segundos / 3600UL;
-  byte minutos = (segundos / 60UL) % 60;
-  byte seg = segundos % 60;
 
-  char horario[12];
-
-  snprintf_P(
-    horario, sizeof(horario),
-    PSTR("%02u:%02u:%02u"),
-    horas, minutos, seg
-  );
-
-  texto(9, 98, 3, CYAN, horario);
-}
 
 
 int enderecoSlot(byte slot) {
@@ -1735,9 +1699,6 @@ void atualizarBotao() {
     case MENU:
       abrirAplicativo();
       break;
-    case MONITOR:
-      mostrarMenu();
-      break;
     case CONFIG:
       selecionarConfig();
       break;
@@ -1781,7 +1742,6 @@ void setup() {
   inicializarBoxFiles();
   carregarConfiguracoes();
   iniciarRTC();
-  inicioSistema = millis();
   iniciado = true;
   somInicializacao();
   animacaoInicio();
@@ -1791,10 +1751,6 @@ void setup() {
 
 void loop() {
   if (!iniciado) return;
-  if (tela == MONITOR && millis() - ultimaAtualizacao >= 1000) {
-    ultimaAtualizacao = millis();
-    atualizarMonitor();
-  }
   if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 100) {
     ultimaAtualizacaoRelogio = millis();
     DataHoraRTC horarioAtual;
