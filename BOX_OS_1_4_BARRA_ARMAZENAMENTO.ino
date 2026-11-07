@@ -17,7 +17,7 @@ struct DataHoraRTC;
 #define JOY_X A0
 #define JOY_Y A1
 #define JOY_SW 2
-#define BUZZER_PIN 6  // Buzzer passivo: positivo no D6, negativo no GND
+#define BUZZER_PIN 6
 
 #define RTC_IO 12
 #define RTC_SCLK 13
@@ -185,10 +185,10 @@ void mostrarAjusteData();
 void mostrarAjusteHora();
 
 const char TECLADO_QWERTY[4][11] PROGMEM = {
-  "QWERTYUIOP",  // 10 teclas
-  "ASDFGHJKL",   // 9 teclas
-  "ZXCVBNM",     // 7 teclas
-  "1234567890"   // 10 teclas
+  "QWERTYUIOP",
+  "ASDFGHJKL",
+  "ZXCVBNM",
+  "1234567890"
 };
 
 const byte TECLADO_LINHAS = 4;
@@ -258,7 +258,7 @@ void iniciarRTC() {
 
 void salvarConfiguracoes() {
   EEPROM.update(CONFIG_EEPROM_BASE, CONFIG_MAGIC);
-  EEPROM.update(CONFIG_EEPROM_BASE + 1, 1); // versao
+  EEPROM.update(CONFIG_EEPROM_BASE + 1, 1);
   EEPROM.update(CONFIG_EEPROM_BASE + 2, tamanhoFonte);
   EEPROM.update(CONFIG_EEPROM_BASE + 3, tamanhoIcone);
   EEPROM.update(CONFIG_EEPROM_BASE + 4,
@@ -995,7 +995,7 @@ void escreverArquivo(byte slot, const char *nome, const char *conteudo, uint16_t
   if (tamanho > FILE_MAX_TEXT) tamanho = FILE_MAX_TEXT;
 
   int base = enderecoSlot(slot);
-  EEPROM.update(base, 0); // marca como indisponivel durante a gravacao
+  EEPROM.update(base, 0);
 
   for (byte i = 0; i < FILE_NAME_SIZE; i++) {
     char c = nome[i];
@@ -2159,46 +2159,6 @@ void loop() {
     if (horarioDisponivel && relogioMenuDisponivel && dataHoraMenuMudou(horarioAtual, dataHoraMenuAnterior)) mudou = true;
     if (mudou) mostrarMenu();
   }
-  atualizarNavegacao();
-  atualizarBotao();
-}
-
-void loop() {
-  lerSerial();
-
-  if (!iniciado) return;
-
-  if (tela == DINO) {
-    atualizarDino();
-    return;
-  }
-
-  if (tela == MONITOR) {
-    if (millis() - ultimaAtualizacao >= 1000) {
-      ultimaAtualizacao = millis();
-      atualizarMonitor();
-    }
-  }
-
-  if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 100) {
-    ultimaAtualizacaoRelogio = millis();
-
-    DataHoraRTC horarioAtual;
-    bool horarioDisponivel = rtcLerDataHora(horarioAtual);
-
-    bool mudou = !relogioMenuInicializado ||
-                 (horarioDisponivel != relogioMenuDisponivel);
-
-    if (horarioDisponivel && relogioMenuDisponivel &&
-        dataHoraMenuMudou(horarioAtual, dataHoraMenuAnterior)) {
-      mudou = true;
-    }
-
-    if (mudou) {
-      mostrarMenu();
-    }
-  }
-
   atualizarNavegacao();
   atualizarBotao();
 }
