@@ -127,12 +127,16 @@ const byte ACAO_OK = 2;
 
 
 void limpar() {
-  // Limpa o quadro sem desligar o painel, evitando flashes brancos.
+  // Pisca rapidamente a tela sem exibir a transição branca.
+  displayTFT.enableDisplay(false);
+  delay(35);
+  displayTFT.enableDisplay(true);
   displayTFT.fillScreen(ST77XX_BLACK);
 }
 
 void mostrarTela() {
-  // Mantido para preservar as chamadas das telas.
+  // Mostra o quadro pronto de uma só vez.
+  displayTFT.enableDisplay(true);
 }
 
 
