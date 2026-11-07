@@ -229,12 +229,26 @@ uint16_t corTFT(const char *cor) {
 void desenharTextoTFT(int x, int y, int tamanho, uint16_t cor, const char *mensagem, bool centralizar) {
   if (!mensagem) return;
   displayTFT.setTextWrap(false);
-  displayTFT.setTextSize(tamanho);
-  displayTFT.setTextColor(cor, ST77XX_BLACK);
   int16_t x1, y1;
   uint16_t largura, altura;
+
+  // Diminui somente a linha atual se ela não couber na largura da TFT.
+  while (tamanho > 1) {
+    displayTFT.setTextSize(tamanho);
+    displayTFT.getTextBounds(mensagem, 0, 0, &x1, &y1, &largura, &altura);
+    if (largura <= displayTFT.width()) break;
+    tamanho--;
+  }
+
+  displayTFT.setTextSize(tamanho);
   displayTFT.getTextBounds(mensagem, 0, 0, &x1, &y1, &largura, &altura);
   if (centralizar) x -= largura / 2;
+  if (x < 0) x = 0;
+  if (x + (int)largura > displayTFT.width()) x = displayTFT.width() - largura;
+  if (y < 0) y = 0;
+  if (y + (int)altura > displayTFT.height()) y = displayTFT.height() - altura;
+
+  displayTFT.setTextColor(cor, ST77XX_BLACK);
   displayTFT.setCursor(x, y);
   displayTFT.print(mensagem);
 }
