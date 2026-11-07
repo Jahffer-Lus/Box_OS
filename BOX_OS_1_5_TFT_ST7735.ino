@@ -114,8 +114,6 @@ const char TECLADO_QWERTY[4][11] PROGMEM = {
   "ASDFGHJKL",
   "ZXCVBNM",
   "1234567890"
-
-  mostrarTela();
 };
 
 const byte TECLADO_LINHAS = 4;
