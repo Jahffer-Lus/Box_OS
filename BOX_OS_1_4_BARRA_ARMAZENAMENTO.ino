@@ -7,28 +7,29 @@
 #include <avr/pgmspace.h>
 #include <ThreeWire.h>
 #include <RtcDS1302.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7735.h>
+#include <SPI.h>
 
-// Declaracao antecipada: evita erro dos prototipos automaticos do Arduino.
 struct DataHoraRTC;
 
-// =============================================
-// BOX OS 1.4 - BOX FILES + BARRA DE ARMAZENAMENTO + QWERTY + BUZZER + RTC + TERMINAL
-// Arduino Uno R3 + BOX DISPLAY
-// =============================================
 
 #define JOY_X A0
 #define JOY_Y A1
 #define JOY_SW 2
 #define BUZZER_PIN 6  // Buzzer passivo: positivo no D6, negativo no GND
 
-// RTC MH-Real-Time Clock com chip DS1302:
-// DAT -> D12, CLK -> D13, RST/CE -> D11
 #define RTC_IO 12
 #define RTC_SCLK 13
 #define RTC_CE 11
 
-// Biblioteca Rtc by Makuna para o DS1302.
 ThreeWire rtcFio(RTC_IO, RTC_SCLK, RTC_CE);
+#define TFT_CS 10
+#define TFT_DC 9
+#define TFT_RST 8
+#define TFT_MOSI 4
+#define TFT_SCLK 5
+Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 RtcDS1302<ThreeWire> Rtc(rtcFio);
 
 #define CYAN  F("#55E6FF")
@@ -43,7 +44,6 @@ RtcDS1302<ThreeWire> Rtc(rtcFio);
 const byte TOTAL_APPS = 5;
 const byte TOTAL_CONFIG = 7;
 
-// Textos fixos ficam na memoria Flash, nao na RAM.
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
     case 0: return F("JOGOS");
@@ -56,11 +56,11 @@ const __FlashStringHelper *nomeApp(byte indice) {
 
 const __FlashStringHelper *iconeApp(byte indice) {
   switch (indice) {
-    case 0: return F("🎮");
-    case 1: return F("💻");
-    case 2: return F("📊");
-    case 3: return F(" ⚙️");
-    default: return F("📁");
+    case 0: return F("J");
+    case 1: return F("T");
+    case 2: return F("M");
+    case 3: return F("C");
+    default: return F("F");
   }
 }
 
@@ -76,9 +76,6 @@ const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
   }
 }
 
-// =============================================
-// ESTADOS
-// =============================================
 
 enum Screen {
   MENU,
@@ -106,7 +103,6 @@ byte tamanhoFonte = 2;
 byte tamanhoIcone = 2;
 byte configPrimeira = 0;
 
-// Configuracoes persistentes na EEPROM (BOX FILES ocupa enderecos 0..1007).
 const int CONFIG_EEPROM_BASE = 1008;
 const byte CONFIG_MAGIC = 0xB7;
 
@@ -129,7 +125,6 @@ bool relogioMenuDisponivel = false;
 char entradaDataHora[11] = "";
 byte tamanhoEntradaDataHora = 0;
 
-// Terminal: entrada e ultima resposta.
 char terminalEntrada[17] = "";
 byte terminalTamanho = 0;
 char terminalResposta[25] = "DIGITE AJUDA";
@@ -150,12 +145,6 @@ bool ultimoEstadoBotao = HIGH;
 
 unsigned long inicioSistema = 0;
 
-// =============================================
-// BOX FILES 1.0 - EEPROM INTERNA
-// 5 arquivos de 200 bytes = 1000 bytes.
-// Cada arquivo guarda nome, tamanho e ate 185 bytes de texto.
-// Os dois primeiros arquivos sao protegidos.
-// =============================================
 const byte FILE_MAGIC_0 = 'B';
 const byte FILE_MAGIC_1 = 'X';
 const byte FILE_MAGIC_2 = 'F';
@@ -183,7 +172,6 @@ bool editandoNomeArquivo = false;
 char nomeTemporario[9];
 byte tamanhoNomeTemporario = 0;
 
-// Prototipos para deixar a ordem das funcoes explicita.
 void mostrarJogos();
 void mostrarTerminal();
 void mostrarMonitor();
@@ -196,7 +184,6 @@ void mostrarConfig();
 void mostrarAjusteData();
 void mostrarAjusteHora();
 
-// Teclado QWERTY compacto: 4 linhas de teclas e uma linha de acoes.
 const char TECLADO_QWERTY[4][11] PROGMEM = {
   "QWERTYUIOP",  // 10 teclas
   "ASDFGHJKL",   // 9 teclas
@@ -210,18 +197,11 @@ const byte ACAO_DEL = 0;
 const byte ACAO_ESPACO = 1;
 const byte ACAO_OK = 2;
 
-// =============================================
-// DESENHO SERIAL
-// =============================================
 
 void limpar() {
-  Serial.println(F("CLEAR"));
+  displayTFT.fillScreen(ST77XX_BLACK);
 }
 
-// =============================================
-// RTC DS1302 - BIBLIOTECA RTC BY MAKUNA
-// DAT -> D12, CLK -> D13, RST/CE -> D11
-// =============================================
 
 bool rtcLerDataHora(DataHoraRTC &dh) {
   if (!Rtc.IsDateTimeValid()) return false;
@@ -275,11 +255,6 @@ void iniciarRTC() {
   }
 }
 
-// =============================================
-// CONFIGURACOES NA EEPROM DO UNO
-// BOX FILES usa 8 + 5*200 = 1008 bytes.
-// Guardamos as preferencias nos 16 bytes restantes.
-// =============================================
 
 void salvarConfiguracoes() {
   EEPROM.update(CONFIG_EEPROM_BASE, CONFIG_MAGIC);
@@ -309,10 +284,6 @@ void carregarConfiguracoes() {
   }
 }
 
-// =============================================
-// SONS DO BOX OS - BUZZER PASSIVO NO D6
-// tone() gera frequencias; a duracao nao bloqueia o loop.
-// =============================================
 
 void somClique() {
   tone(BUZZER_PIN, 1450, 35);
@@ -365,8 +336,6 @@ void somInicializacao() {
   noTone(BUZZER_PIN);
 }
 
-// Converte o nível de fonte (1 a 4) em um tamanho proporcional.
-// O nível 2 mantém aproximadamente o tamanho normal do BOX OS.
 byte ajustarTamanhoFonte(byte tamanhoBase) {
   int resultado = (int)tamanhoBase + (int)tamanhoFonte - 2;
   if (resultado < 1) resultado = 1;
@@ -374,168 +343,86 @@ byte ajustarTamanhoFonte(byte tamanhoBase) {
   return (byte)resultado;
 }
 
-void enviarTextoSerial(
-  int x, int y, int tamanho,
-  const __FlashStringHelper *cor,
-  const __FlashStringHelper *mensagem
-) {
-  Serial.print(F("TEXT|"));
-  Serial.print(x); Serial.print('|');
-  Serial.print(y); Serial.print('|');
-  Serial.print(tamanho); Serial.print('|');
-  Serial.print(cor); Serial.print('|');
-  Serial.println(mensagem);
+uint16_t corTFT(const __FlashStringHelper *cor) {
+  char valor[8];
+  strcpy_P(valor, (PGM_P)cor);
+  return corTFT(valor);
 }
 
-void enviarTextoSerial(
-  int x, int y, int tamanho,
-  const __FlashStringHelper *cor, const char *mensagem
-) {
-  Serial.print(F("TEXT|"));
-  Serial.print(x); Serial.print('|');
-  Serial.print(y); Serial.print('|');
-  Serial.print(tamanho); Serial.print('|');
-  Serial.print(cor); Serial.print('|');
-  Serial.println(mensagem);
+uint16_t corTFT(const char *cor) {
+  if (!cor || cor[0] != '#') return ST77XX_WHITE;
+  char *fim;
+  unsigned long rgb = strtoul(cor + 1, &fim, 16);
+  byte r = (rgb >> 16) & 0xFF;
+  byte g = (rgb >> 8) & 0xFF;
+  byte b = rgb & 0xFF;
+  return displayTFT.color565(r, g, b);
 }
 
-// Textos fixos usam F() e ficam na Flash. Textos variaveis usam RAM.
-void texto(int x, int y, int tamanho,
-           const __FlashStringHelper *cor,
-           const __FlashStringHelper *mensagem) {
-  enviarTextoSerial(x, y, ajustarTamanhoFonte(tamanho), cor, mensagem);
+void desenharTextoTFT(int x, int y, int tamanho, uint16_t cor, const char *mensagem, bool centralizar) {
+  if (!mensagem) return;
+  displayTFT.setTextWrap(false);
+  displayTFT.setTextSize(tamanho);
+  displayTFT.setTextColor(cor, ST77XX_BLACK);
+  int16_t x1, y1;
+  uint16_t largura, altura;
+  displayTFT.getTextBounds(mensagem, 0, 0, &x1, &y1, &largura, &altura);
+  if (centralizar) x -= largura / 2;
+  displayTFT.setCursor(x, y);
+  displayTFT.print(mensagem);
 }
 
-void texto(int x, int y, int tamanho,
-           const __FlashStringHelper *cor, const char *mensagem) {
-  enviarTextoSerial(x, y, ajustarTamanhoFonte(tamanho), cor, mensagem);
+void desenharTextoFlashTFT(int x, int y, int tamanho, uint16_t cor, const __FlashStringHelper *mensagem, bool centralizar) {
+  char buffer[48];
+  strncpy_P(buffer, (PGM_P)mensagem, sizeof(buffer) - 1);
+  buffer[sizeof(buffer) - 1] = '\0';
+  desenharTextoTFT(x, y, tamanho, cor, buffer, centralizar);
 }
 
-void textoIcone(int x, int y, int tamanho,
-                const __FlashStringHelper *cor,
-                const __FlashStringHelper *mensagem) {
+void texto(int x, int y, int tamanho, const __FlashStringHelper *cor, const __FlashStringHelper *mensagem) {
+  desenharTextoFlashTFT(x, y, ajustarTamanhoFonte(tamanho), corTFT(cor), mensagem, false);
+}
+
+void texto(int x, int y, int tamanho, const __FlashStringHelper *cor, const char *mensagem) {
+  desenharTextoTFT(x, y, ajustarTamanhoFonte(tamanho), corTFT(cor), mensagem, false);
+}
+
+void textoIcone(int x, int y, int tamanho, const __FlashStringHelper *cor, const __FlashStringHelper *mensagem) {
   int ajustado = (int)tamanho + (int)tamanhoIcone - 2;
   if (ajustado < 1) ajustado = 1;
-  if (ajustado > 6) ajustado = 6;
-  enviarTextoSerial(x, y, ajustado, cor, mensagem);
+  if (ajustado > 4) ajustado = 4;
+  desenharTextoFlashTFT(x, y, ajustado, corTFT(cor), mensagem, false);
 }
 
-void linha(
-  int x1, int y1, int x2, int y2,
-  const __FlashStringHelper *cor
-) {
-  Serial.print(F("LINE|"));
-  Serial.print(x1);
-  Serial.print('|');
-  Serial.print(y1);
-  Serial.print('|');
-  Serial.print(x2);
-  Serial.print('|');
-  Serial.print(y2);
-  Serial.print('|');
-  Serial.println(cor);
+void linha(int x1, int y1, int x2, int y2, const __FlashStringHelper *cor) {
+  displayTFT.drawLine(x1, y1, x2, y2, corTFT(cor));
 }
 
-void circulo(
-  int x, int y, int raio,
-  const __FlashStringHelper *cor
-) {
-  Serial.print(F("CIRCLE|"));
-  Serial.print(x);
-  Serial.print('|');
-  Serial.print(y);
-  Serial.print('|');
-  Serial.print(raio);
-  Serial.print('|');
-  Serial.println(cor);
+void circulo(int x, int y, int raio, const __FlashStringHelper *cor) {
+  displayTFT.fillCircle(x, y, raio, corTFT(cor));
 }
 
 void retangulo(int x, int y, int largura, int altura, const __FlashStringHelper *cor) {
-  Serial.print(F("RECT|"));
-  Serial.print(x);
-  Serial.print('|');
-  Serial.print(y);
-  Serial.print('|');
-  Serial.print(largura);
-  Serial.print('|');
-  Serial.print(altura);
-  Serial.print('|');
-  Serial.println(cor);
+  displayTFT.fillRect(x, y, largura, altura, corTFT(cor));
 }
 
-// Retangulo com cantos arredondados, desenhado pelo BOX DISPLAY.
-void retanguloArredondado(
-  int x, int y, int largura, int altura, int raio,
-  const __FlashStringHelper *cor
-) {
-  Serial.print(F("RRECT|"));
-  Serial.print(x);
-  Serial.print('|');
-  Serial.print(y);
-  Serial.print('|');
-  Serial.print(largura);
-  Serial.print('|');
-  Serial.print(altura);
-  Serial.print('|');
-  Serial.print(raio);
-  Serial.print('|');
-  Serial.println(cor);
+void retanguloArredondado(int x, int y, int largura, int altura, int raio, const __FlashStringHelper *cor) {
+  displayTFT.fillRoundRect(x, y, largura, altura, raio, corTFT(cor));
 }
 
-// Envia o emoji centralizado no quadrado arredondado.
-void textoIconeCentro(
-  int x, int y, int tamanho,
-  const __FlashStringHelper *cor,
-  const __FlashStringHelper *mensagem
-) {
+void textoIconeCentro(int x, int y, int tamanho, const __FlashStringHelper *cor, const __FlashStringHelper *mensagem) {
   int ajustado = (int)tamanho + (int)tamanhoIcone - 2;
   if (ajustado < 1) ajustado = 1;
-  if (ajustado > 6) ajustado = 6;
-
-  Serial.print(F("TEXTC|"));
-  Serial.print(x);
-  Serial.print('|');
-  Serial.print(y);
-  Serial.print('|');
-  Serial.print(ajustado);
-  Serial.print('|');
-  Serial.print(cor);
-  Serial.print('|');
-  Serial.println(mensagem);
+  if (ajustado > 4) ajustado = 4;
+  desenharTextoFlashTFT(x, y - (ajustado * 4), ajustado, corTFT(cor), mensagem, true);
 }
 
-void textoCentro(
-  int x, int y, int tamanho,
-  const __FlashStringHelper *cor,
-  const char *mensagem
-) {
-  Serial.print(F("TEXTC|"));
-  Serial.print(x);
-  Serial.print('|');
-  Serial.print(y);
-  Serial.print('|');
-  Serial.print(tamanho);
-  Serial.print('|');
-  Serial.print(cor);
-  Serial.print('|');
-  Serial.println(mensagem);
+void textoCentro(int x, int y, int tamanho, const __FlashStringHelper *cor, const char *mensagem) {
+  desenharTextoTFT(x, y, tamanho, corTFT(cor), mensagem, true);
 }
 
-void textoCentro(
-  int x, int y, int tamanho,
-  const __FlashStringHelper *cor,
-  const __FlashStringHelper *mensagem
-) {
-  Serial.print(F("TEXTC|"));
-  Serial.print(x);
-  Serial.print('|');
-  Serial.print(y);
-  Serial.print('|');
-  Serial.print(tamanho);
-  Serial.print('|');
-  Serial.print(cor);
-  Serial.print('|');
-  Serial.println(mensagem);
+void textoCentro(int x, int y, int tamanho, const __FlashStringHelper *cor, const __FlashStringHelper *mensagem) {
+  desenharTextoFlashTFT(x, y, tamanho, corTFT(cor), mensagem, true);
 }
 
 int lerDirecaoX() {
@@ -552,9 +439,6 @@ int lerDirecaoY() {
   return 0;
 }
 
-// =============================================
-// CALIBRACAO
-// =============================================
 
 void calibrarJoystick() {
   long sx = 0;
@@ -570,7 +454,6 @@ void calibrarJoystick() {
   centroY = sy / 24;
 }
 
-// Retorna -1, 0 ou 1
 int lerDirecao() {
   int x = analogRead(JOY_X) - centroX;
   int y = analogRead(JOY_Y) - centroY;
@@ -604,9 +487,6 @@ bool botaoPressionado() {
   return false;
 }
 
-// =============================================
-// ANIMACAO DE INICIO: CUBO
-// =============================================
 
 const float vertices[8][3] PROGMEM = {
   {-1,-1,-1}, {1,-1,-1},
@@ -664,12 +544,8 @@ void animacaoInicio() {
   }
 }
 
-// =============================================
-// MENU PRINCIPAL
-// =============================================
 
 void mostrarDataHoraMenu() {
-  // Apaga a faixa anterior antes de redesenhar para evitar numeros sobrepostos.
   retangulo(4, 23, 122, 14, F("#000000"));
 
   if (!rtcLerDataHora(dataHoraAtual)) {
@@ -679,7 +555,6 @@ void mostrarDataHoraMenu() {
     return;
   }
 
-  // Salva exatamente os valores que estao sendo desenhados na tela.
   dataHoraMenuAnterior = dataHoraAtual;
   relogioMenuDisponivel = true;
   relogioMenuInicializado = true;
@@ -738,9 +613,6 @@ void mostrarMenu() {
   texto(5, 151, 1, CYAN, F("SW: ABRIR"));
 }
 
-// =============================================
-// CONFIGURACOES
-// =============================================
 
 void mostrarConfig() {
   tela = CONFIG;
@@ -767,7 +639,6 @@ void mostrarConfig() {
 }
 
 void desenharTecladoDataHora() {
-  // Teclado numerico em grade 3x3: 1 a 9.
   const int xTeclas[3] = {20, 55, 90};
   const int yTeclas[3] = {59, 76, 93};
 
@@ -782,7 +653,6 @@ void desenharTecladoDataHora() {
     }
   }
 
-  // Acoes inferiores: DEL, 0, ENTER e SAIR.
   bool a0 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 0;
   bool a1 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 1;
   bool a2 = tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == 2;
@@ -878,24 +748,17 @@ void mostrarAjusteIcones() {
   texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
 }
 
-// =============================================
-// DESLIGAR
-// =============================================
 
 void desligarBOX() {
   limpar();
   texto(30, 65, 3, CYAN, F("BOX OS"));
   texto(31, 91, 2, WHITE, F("DESLIGADO"));
 
-  // O RESET fisico liga novamente
   while (true) {
     delay(100);
   }
 }
 
-// =============================================
-// REINICIAR
-// =============================================
 
 void reiniciarBOX() {
   for (byte repeticao = 0; repeticao < 3; repeticao++) {
@@ -918,9 +781,6 @@ void reiniciarBOX() {
   }
 }
 
-// =============================================
-// ABRIR APLICATIVOS
-// =============================================
 
 void abrirAplicativo() {
   switch (selecionado) {
@@ -978,7 +838,6 @@ void mostrarTerminal() {
   texto(32, 27, 1, WHITE, terminalEntrada);
   texto(5, 43, 1, CYAN, terminalResposta);
 
-  // Quando minimizado, deixa a area livre para acompanhar os resultados.
   if (terminalTecladoMinimizado) {
     textoCentro(64, 82, 2, CYAN, F("TECLADO OCULTO"));
     textoCentro(64, 106, 1, WHITE, F("SW: MOSTRAR TECLADO"));
@@ -1013,7 +872,6 @@ void mostrarTerminal() {
   retanguloArredondado(102, 116, 24, 12, 2, a3 ? CYAN : DARK);
   textoCentro(114, 122, 1, a3 ? CYAN : WHITE, F("SAIR"));
 
-  // Botao extra em uma segunda linha para caber o nome completo.
   retanguloArredondado(3, 132, 123, 12, 2, a4 ? CYAN : DARK);
   textoCentro(64, 138, 1, a4 ? CYAN : WHITE, F("MINIMIZAR"));
   texto(5, 149, 1, GRAY, F("JOY: MOVER  SW: SELECIONAR"));
@@ -1050,7 +908,6 @@ void executarComandoTerminal() {
 }
 
 void selecionarTeclaTerminal() {
-  // Com o teclado oculto, SW apenas o mostra novamente.
   if (terminalTecladoMinimizado) {
     terminalTecladoMinimizado = false;
     tecladoLinha = 0;
@@ -1080,7 +937,6 @@ void selecionarTeclaTerminal() {
     if (tecla && terminalTamanho < 16) {
       terminalEntrada[terminalTamanho++] = tecla;
       terminalEntrada[terminalTamanho] = '\0';
-      // Somente a selecao efetiva de uma letra gera clique.
       somClique();
     }
   }
@@ -1103,9 +959,6 @@ void mostrarMonitor() {
   texto(5, 151, 1, CYAN, F("SW: VOLTAR"));
 }
 
-// =============================================
-// MONITOR DE ATIVIDADE
-// =============================================
 
 void atualizarMonitor() {
   desenharBarraArmazenamento(true);
@@ -1127,9 +980,6 @@ void atualizarMonitor() {
   texto(9, 98, 3, CYAN, horario);
 }
 
-// =============================================
-// BOX FILES 1.0 - FUNCOES DA EEPROM
-// =============================================
 
 int enderecoSlot(byte slot) {
   return FILE_HEADER_SIZE + (int)slot * FILE_SLOT_SIZE;
@@ -1192,7 +1042,6 @@ void carregarArquivo(byte slot) {
 }
 
 void apagarArquivo(byte slot) {
-  // O slot 1 continua reservado para CREDITOS.TXT.
   if (slot == 1 || slot >= FILE_TOTAL_SLOTS) return;
   EEPROM.update(enderecoSlot(slot), 0);
 }
@@ -1227,8 +1076,6 @@ void inicializarBoxFiles() {
 
   byte versaoFormato = EEPROM.read(3);
 
-  // Migracao segura: libera o slot 0, antes ocupado pelo LEIA-ME.
-  // CREDITOS.TXT e os arquivos do usuario sao preservados.
   if (assinaturaValida && versaoFormato == 1) {
     EEPROM.update(enderecoSlot(0), 0);
     EEPROM.update(3, 2);
@@ -1237,7 +1084,6 @@ void inicializarBoxFiles() {
 
   if (assinaturaValida && versaoFormato == 2) return;
 
-  // Instalacao nova: somente CREDITOS.TXT ocupa um slot reservado.
   EEPROM.update(0, FILE_MAGIC_0);
   EEPROM.update(1, FILE_MAGIC_1);
   EEPROM.update(2, FILE_MAGIC_2);
@@ -1269,8 +1115,6 @@ void atualizarListaArquivos() {
 }
 
 
-// Cada arquivo pessoal ocupa um slot fixo de 200 bytes.
-// O slot 1 fica reservado para CREDITOS.TXT.
 void calcularArmazenamento(uint16_t &usados, uint16_t &capacidade) {
   usados = 0;
   capacidade = (FILE_TOTAL_SLOTS - 1) * FILE_SLOT_SIZE;
@@ -1315,12 +1159,10 @@ void mostrarListaArquivos() {
   atualizarListaArquivos();
   limpar();
 
-  // Cabecalho fixo: titulo, barra de armazenamento e depois a lista.
   texto(5, 3, 3, CYAN, F("BOX FILES"));
   linha(5, 20, 123, 20, GRAY);
   desenharBarraArmazenamento(false);
 
-  // Arquivos + opcao NOVO (se houver espaco) + opcao VOLTAR.
   byte totalItens = qtdArquivos + (temEspacoArquivo ? 1 : 0) + 1;
   byte itemVoltar = totalItens - 1;
 
@@ -1328,7 +1170,6 @@ void mostrarListaArquivos() {
     selecionadoArquivo = itemVoltar;
   }
 
-  // Cinco linhas compactas abaixo da barra.
   byte primeiro = 0;
   if (selecionadoArquivo >= 5) {
     primeiro = selecionadoArquivo - 4;
@@ -1407,13 +1248,11 @@ void abrirArquivoSelecionado() {
 
   if (selecionadoArquivo >= totalItens) return;
 
-  // A ultima opcao sempre retorna ao menu principal.
   if (selecionadoArquivo == itemVoltar) {
     mostrarMenu();
     return;
   }
 
-  // A opcao NOVO aparece somente quando existe um espaco livre.
   if (temEspacoArquivo && selecionadoArquivo == qtdArquivos) {
     criarArquivoNovo();
     return;
@@ -1476,7 +1315,6 @@ byte quantidadeTeclasQwerty(byte linhaTeclado) {
 }
 
 int inicioLinhaQwerty(byte linhaTeclado) {
-  // Centraliza as linhas de 9 e 7 teclas.
   if (linhaTeclado == 1) return 11;
   if (linhaTeclado == 2) return 23;
   return 5;
@@ -1559,7 +1397,6 @@ void mostrarEditorArquivo() {
   }
   texto(5, 46, 1, GRAY, contador);
 
-  // Quatro linhas do teclado QWERTY.
   for (byte row = 0; row < TECLADO_LINHAS; row++) {
     byte total = quantidadeTeclasQwerty(row);
     int xInicio = inicioLinhaQwerty(row);
@@ -1586,7 +1423,6 @@ void mostrarEditorArquivo() {
     }
   }
 
-  // Linha de acoes: DEL, ESPACO e OK.
   bool delAtivo = (tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == ACAO_DEL);
   bool espacoAtivo = (tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == ACAO_ESPACO);
   bool okAtivo = (tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == ACAO_OK);
@@ -1615,7 +1451,6 @@ bool nomeArquivoEmUso(const char *nome, byte ignorarSlot) {
 }
 
 void selecionarTeclaEditor() {
-  // A linha inferior possui tres botoes de acao.
   if (tecladoLinha == TECLADO_LINHA_ACOES) {
     if (tecladoColuna == ACAO_DEL) {
       if (editandoNomeArquivo) {
@@ -1641,7 +1476,6 @@ void selecionarTeclaEditor() {
       return;
     }
 
-    // ACAO_OK: salvar texto ou confirmar nome.
     if (editandoNomeArquivo) {
       if (tamanhoNomeTemporario == 0) return;
 
@@ -1690,7 +1524,6 @@ void selecionarTeclaEditor() {
     return;
   }
 
-  // Tecla alfanumerica selecionada.
   char tecla = lerTeclaQwerty(tecladoLinha, tecladoColuna);
   if (tecla == 0) return;
 
@@ -1744,9 +1577,6 @@ void executarAcaoLeitor() {
   }
 }
 
-// =============================================
-// DINO RUN
-// =============================================
 
 bool pulando = false;
 bool gameOver = false;
@@ -1790,7 +1620,6 @@ void iniciarDino() {
   pontos = 0;
   obstaculoX = 120;
 
-  // O obstaculo e a tela atualizam juntos, em intervalos regulares.
   inicioObstaculo = millis();
   ultimaFrameDino = millis();
 
@@ -1818,7 +1647,6 @@ void atualizarDino() {
     pulando = false;
   }
 
-  // A velocidade nao depende mais da velocidade do loop do Arduino.
   if (agora - ultimaFrameDino >= 120) {
     ultimaFrameDino = agora;
 
@@ -1846,7 +1674,6 @@ void atualizarDino() {
     desenharDino();
   }
 
-  // O botao SW sai do jogo e retorna a lista de jogos.
   if (digitalRead(JOY_SW) == LOW) {
     delay(30);
     if (digitalRead(JOY_SW) == LOW) {
@@ -1856,9 +1683,6 @@ void atualizarDino() {
   }
 }
 
-// =============================================
-// MENU DE CONFIGURACOES
-// =============================================
 
 void selecionarConfig() {
   switch (configSelecionada) {
@@ -2011,9 +1835,6 @@ void selecionarTeclaDataHora() {
   else mostrarAjusteHora();
 }
 
-// =============================================
-// CONTROLES
-// =============================================
 
 void atualizarNavegacao() {
   if (millis() - ultimoMovimento < 220) return;
@@ -2125,7 +1946,6 @@ void atualizarNavegacao() {
       }
     }
     ultimoMovimento = millis();
-    // Navegar pelo teclado nao emite som; o clique ocorre ao selecionar uma letra.
     mostrarTerminal();
     return;
   }
@@ -2208,7 +2028,6 @@ void atualizarNavegacao() {
     return;
   }
 
-  // Na tela JOGOS, qualquer movimento do joystick inicia o DINO_RUN.
   if (tela == JOGOS) {
     int direcaoJogo = lerDirecao();
     if (direcaoJogo == 0) return;
@@ -2294,72 +2113,55 @@ void atualizarBotao() {
   }
 }
 
-// =============================================
-// SERIAL: INICIAR TELA
-// =============================================
 
-void lerSerial() {
-  static char comando[16];
-  static byte posicao = 0;
 
-  while (Serial.available()) {
-    char c = Serial.read();
 
-    if (c == '\r') continue;
-
-    if (c == '\n') {
-      comando[posicao] = '\0';
-
-      if (strcmp_P(comando, PSTR("START")) == 0 && !iniciado) {
-        iniciado = true;
-        inicioSistema = millis();
-
-        somInicializacao();
-        animacaoInicio();
-        mostrarMenu();
-
-        Serial.println(F("BOX_STARTED"));
-      }
-
-      if (strcmp_P(comando, PSTR("PING")) == 0) {
-        Serial.println(F("BOX_READY"));
-      }
-
-      posicao = 0;
-    }
-    else if (posicao < sizeof(comando) - 1) {
-      comando[posicao++] = c;
-    }
-  }
-}
-
-// =============================================
-// SETUP
-// =============================================
 
 void setup() {
   wdt_disable();
-
-  Serial.begin(115200);
-
   pinMode(JOY_X, INPUT);
   pinMode(JOY_Y, INPUT);
   pinMode(JOY_SW, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
   noTone(BUZZER_PIN);
+  pinMode(TFT_CS, OUTPUT);
+  digitalWrite(TFT_CS, HIGH);
+  displayTFT.initR(INITR_BLACKTAB);
+  displayTFT.setRotation(0);
+  displayTFT.fillScreen(ST77XX_BLACK);
   calibrarJoystick();
   inicializarBoxFiles();
   carregarConfiguracoes();
   iniciarRTC();
-
-  delay(1000);
-
-  Serial.println(F("BOX_READY"));
+  inicioSistema = millis();
+  iniciado = true;
+  somInicializacao();
+  animacaoInicio();
+  mostrarMenu();
 }
 
-// =============================================
-// LOOP
-// =============================================
+
+void loop() {
+  if (!iniciado) return;
+  if (tela == DINO) {
+    atualizarDino();
+    return;
+  }
+  if (tela == MONITOR && millis() - ultimaAtualizacao >= 1000) {
+    ultimaAtualizacao = millis();
+    atualizarMonitor();
+  }
+  if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 100) {
+    ultimaAtualizacaoRelogio = millis();
+    DataHoraRTC horarioAtual;
+    bool horarioDisponivel = rtcLerDataHora(horarioAtual);
+    bool mudou = !relogioMenuInicializado || (horarioDisponivel != relogioMenuDisponivel);
+    if (horarioDisponivel && relogioMenuDisponivel && dataHoraMenuMudou(horarioAtual, dataHoraMenuAnterior)) mudou = true;
+    if (mudou) mostrarMenu();
+  }
+  atualizarNavegacao();
+  atualizarBotao();
+}
 
 void loop() {
   lerSerial();
@@ -2378,8 +2180,6 @@ void loop() {
     }
   }
 
-  // Verifica o RTC frequentemente, mas so redesenha o menu quando
-  // algum numero da data/hora realmente mudar.
   if (tela == MENU && millis() - ultimaAtualizacaoRelogio >= 100) {
     ultimaAtualizacaoRelogio = millis();
 
@@ -2395,7 +2195,6 @@ void loop() {
     }
 
     if (mudou) {
-      // Atualiza o quadro inteiro, como cada frame da animacao de inicio.
       mostrarMenu();
     }
   }
