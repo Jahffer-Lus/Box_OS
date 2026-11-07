@@ -126,10 +126,11 @@ const byte ACAO_OK = 2;
 
 
 void limpar() {
-  // Apaga a tela inteira de uma vez e prepara o novo quadro sem exibi-lo.
-  displayTFT.enableDisplay(false);
-  displayTFT.fillScreen(ST77XX_BLACK);
+  // Mostra uma tela branca durante 500 ms antes de redesenhar a interface.
+  displayTFT.enableDisplay(true);
+  displayTFT.fillScreen(ST77XX_WHITE);
   delay(500);
+  displayTFT.fillScreen(ST77XX_BLACK);
 }
 
 void mostrarTela() {
