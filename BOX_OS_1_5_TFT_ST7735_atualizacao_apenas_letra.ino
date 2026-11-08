@@ -1293,7 +1293,7 @@ void atualizarNavegacao() {
       // A janela não mudou: atualiza somente a linha antiga e a nova.
       desenharItemListaArquivo(anterior, primeiroNovo);
       desenharItemListaArquivo(selecionadoArquivo, primeiroNovo);
-      mostrarTela();
+      // O display ja esta ligado; nao reenviar DISPON durante redesenho parcial.
     }
     return;
   }
@@ -1335,7 +1335,7 @@ void atualizarNavegacao() {
     // Atualiza somente a opção que perdeu o foco e a que recebeu o foco.
     desenharItemMenu(anterior);
     desenharItemMenu(selecionado);
-    mostrarTela();
+    // Atualizacao parcial: nao reenviar DISPON ao controlador.
   }
   else if (tela == CONFIG) {
     byte anterior = configSelecionada;
@@ -1344,7 +1344,7 @@ void atualizarNavegacao() {
     // Atualiza somente a opção antiga e a nova.
     desenharItemConfig(anterior);
     desenharItemConfig(configSelecionada);
-    mostrarTela();
+    // Atualizacao parcial: nao reenviar DISPON ao controlador.
   }
   else if (tela == AJUSTAR_FONTE) {
     if (direcao < 0 && tamanhoFonte > 1) tamanhoFonte--;
