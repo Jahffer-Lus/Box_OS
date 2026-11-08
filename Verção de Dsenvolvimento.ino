@@ -897,11 +897,11 @@ bool adicionarCaractereColorido(char c) {
   }
   if(tamanhoConteudo>=FILE_MAX_TEXT){
     if((byte)conteudoArquivo[tamanhoConteudo-1]==marcador) tamanhoConteudo--;
-    conteudoArquivo[tamanhoConteudo]='\\0';
+    conteudoArquivo[tamanhoConteudo]='\0';
     return false;
   }
   conteudoArquivo[tamanhoConteudo++]=c;
-  conteudoArquivo[tamanhoConteudo]='\\0';
+  conteudoArquivo[tamanhoConteudo]='\0';
   return true;
 }
 void desenharTrechoColorido(uint16_t inicioVisivel,uint16_t limite,int x,int y) {
@@ -913,7 +913,7 @@ void desenharTrechoColorido(uint16_t inicioVisivel,uint16_t limite,int x,int y) 
     byte v=(byte)conteudoArquivo[i];
     if(v>=MARCA_VERMELHO&&v<=MARCA_BRANCO){cor=(v==MARCA_BRANCO)?0:v;continue;}
     if(visivel++<inicioVisivel) continue;
-    if(v=='\\n'){coluna=0;linhaAtual++;continue;}
+    if(v=='\n'){coluna=0;linhaAtual++;continue;}
     if(coluna>=18){coluna=0;linhaAtual++;}
     if(linhaAtual>=4) break;
     displayTFT.setTextColor(cor==0?ST77XX_WHITE:corMarcadorTFT(cor),ST77XX_BLACK);
@@ -1038,7 +1038,7 @@ void mostrarEditorArquivo() {
   if(editandoNomeArquivo){
     char trecho[19]; byte n=0;
     while(n<18&&n<tamanhoNomeTemporario){trecho[n]=nomeTemporario[n];n++;}
-    trecho[n]='\\0'; texto(5,34,1,WHITE,trecho);
+    trecho[n]='\0'; texto(5,34,1,WHITE,trecho);
   }else desenharPreviewConteudo();
   char contador[20];
   if(editandoNomeArquivo) snprintf_P(contador,sizeof(contador),PSTR("%u/8 LETRAS"),tamanhoNomeTemporario);
@@ -1077,7 +1077,7 @@ void desenharPreviewConteudo(){
   for(uint16_t i=0;i<tamanhoConteudo;i++){
     byte v=(byte)conteudoArquivo[i];
     if(v>=MARCA_VERMELHO&&v<=MARCA_BRANCO) continue;
-    if(v=='\\n') inicio=visivel+1;
+    if(v=='\n') inicio=visivel+1;
     visivel++;
   }
   uint16_t qtd=visivel-inicio;
@@ -1093,7 +1093,7 @@ void atualizarPreviewAposDigitar(char caractere){
     byte inicio=tamanhoNomeTemporario>18?tamanhoNomeTemporario-18:0;
     char trecho[19]; byte n=0;
     for(byte i=inicio;i<tamanhoNomeTemporario&&n<18;i++) trecho[n++]=nomeTemporario[i];
-    trecho[n]='\\0'; texto(5,34,1,WHITE,trecho);
+    trecho[n]='\0'; texto(5,34,1,WHITE,trecho);
   }else desenharPreviewConteudo();
   displayTFT.fillRect(4,45,displayTFT.width()-8,10,ST77XX_BLACK);
   char contador[20];
@@ -1104,7 +1104,7 @@ void atualizarPreviewAposDigitar(char caractere){
 void selecionarTeclaEditor() {
   if (tecladoLinha == TECLADO_LINHA_ACOES) {
     if(tecladoColuna==ACAO_DEL){
-      if(editandoNomeArquivo){if(tamanhoNomeTemporario>0)nomeTemporario[--tamanhoNomeTemporario]='\\0';}
+      if(editandoNomeArquivo){if(tamanhoNomeTemporario>0)nomeTemporario[--tamanhoNomeTemporario]='\0';}
       else if(tamanhoConteudo>0){
         tamanhoConteudo--;
         byte removido=(byte)conteudoArquivo[tamanhoConteudo];
@@ -1114,14 +1114,14 @@ void selecionarTeclaEditor() {
             if(ant>=MARCA_VERMELHO&&ant<=MARCA_BRANCO)tamanhoConteudo--;
           }
         }
-        conteudoArquivo[tamanhoConteudo]='\\0';
+        conteudoArquivo[tamanhoConteudo]='\0';
         corTextoAtual=ultimaCorConteudo();
       }
       mostrarEditorArquivo(); return;
     }
     if(tecladoColuna==ACAO_ESPACO||tecladoColuna==ACAO_ENTER){
       if(!editandoNomeArquivo){
-        char c=tecladoColuna==ACAO_ESPACO?' ':'\\n';
+        char c=tecladoColuna==ACAO_ESPACO?' ':'\n';
         adicionarCaractereColorido(c);
         atualizarPreviewAposDigitar(c);
       }
@@ -1354,7 +1354,7 @@ void atualizarNavegacao() {
     }
     if (dy < 0 && paginaArquivo > 0) paginaArquivo--;
     if (dy > 0) {
-      byte totalPaginas = (tamanhoConteudo + 89) / 90;
+      byte totalPaginas = (contarCaracteresVisiveis() + 71) / 72;
       if (totalPaginas == 0) totalPaginas = 1;
       if (paginaArquivo + 1 < totalPaginas) paginaArquivo++;
     }
