@@ -642,30 +642,8 @@ void carregarArquivo(byte slot) {
 }
 
 void apagarArquivo(byte slot) {
-  if (slot == 1 || slot >= FILE_TOTAL_SLOTS) return;
-  EEPROM.update(enderecoSlot(slot), 0);
-}
-
-void escreverArquivoFlash(byte slot, PGM_P nome, PGM_P conteudo, uint16_t tamanho) {
   if (slot >= FILE_TOTAL_SLOTS) return;
-  if (tamanho > FILE_MAX_TEXT) tamanho = FILE_MAX_TEXT;
-
-  int base = enderecoSlot(slot);
-  EEPROM.update(base, 0);
-  for (byte i = 0; i < FILE_NAME_SIZE; i++) {
-    byte c = pgm_read_byte(nome + i);
-    EEPROM.update(base + 1 + i, c);
-    if (c == 0) {
-      for (byte j = i + 1; j < FILE_NAME_SIZE; j++) EEPROM.update(base + 1 + j, 0);
-      break;
-    }
-  }
-  EEPROM.update(base + 13, (byte)(tamanho & 0xFF));
-  EEPROM.update(base + 14, (byte)(tamanho >> 8));
-  for (uint16_t i = 0; i < tamanho; i++) {
-    EEPROM.update(base + FILE_CONTENT_OFFSET + i, pgm_read_byte(conteudo + i));
-  }
-  EEPROM.update(base, FILE_ACTIVE_MARK);
+  EEPROM.update(enderecoSlot(slot), 0);
 }
 
 void inicializarBoxFiles() {
@@ -679,10 +657,18 @@ void inicializarBoxFiles() {
   if (assinaturaValida && versaoFormato == 1) {
     EEPROM.update(enderecoSlot(0), 0);
     EEPROM.update(3, 2);
+    char nomeAntigo[FILE_NAME_SIZE + 1];
+    lerNomeArquivo(1, nomeAntigo);
+    if (strcmp(nomeAntigo, "CREDITOS.TXT") == 0) EEPROM.update(enderecoSlot(1), 0);
     return;
   }
 
-  if (assinaturaValida && versaoFormato == 2) return;
+  if (assinaturaValida && versaoFormato == 2) {
+    char nomeAntigo[FILE_NAME_SIZE + 1];
+    lerNomeArquivo(1, nomeAntigo);
+    if (strcmp(nomeAntigo, "CREDITOS.TXT") == 0) EEPROM.update(enderecoSlot(1), 0);
+    return;
+  }
 
   EEPROM.update(0, FILE_MAGIC_0);
   EEPROM.update(1, FILE_MAGIC_1);
@@ -694,11 +680,6 @@ void inicializarBoxFiles() {
     EEPROM.update(enderecoSlot(slot), 0);
   }
 
-  static const char CREDITOS[] PROGMEM =
-    "BOX OS. Criado por Jahffer. Assistencia de programacao: "
-    "ChatGPT (OpenAI). Obrigado por usar o BOX OS!";
-
-  escreverArquivoFlash(1, PSTR("CREDITOS.TXT"), CREDITOS, sizeof(CREDITOS) - 1);
 }
 
 void atualizarListaArquivos() {
@@ -708,7 +689,7 @@ void atualizarListaArquivos() {
   for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
     if (arquivoExiste(slot)) {
       indicesArquivos[qtdArquivos++] = slot;
-    } else if (slot != 1) {
+    } else {
       temEspacoArquivo = true;
     }
   }
@@ -717,10 +698,9 @@ void atualizarListaArquivos() {
 
 void calcularArmazenamento(uint16_t &usados, uint16_t &capacidade) {
   usados = 0;
-  capacidade = (FILE_TOTAL_SLOTS - 1) * FILE_SLOT_SIZE;
+  capacidade = FILE_TOTAL_SLOTS * FILE_SLOT_SIZE;
 
   for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
-    if (slot == 1) continue;
     if (arquivoExiste(slot)) usados += FILE_SLOT_SIZE;
   }
 }
@@ -821,7 +801,6 @@ void mostrarListaArquivos() {
 void criarArquivoNovo() {
   byte slotLivre = 255;
   for (byte slot = 0; slot < FILE_TOTAL_SLOTS; slot++) {
-    if (slot == 1) continue;
     if (!arquivoExiste(slot)) {
       slotLivre = slot;
       break;
@@ -903,16 +882,12 @@ void mostrarLeitorArquivo() {
   snprintf_P(paginaTexto, sizeof(paginaTexto), PSTR("PAG %u/%u"), paginaArquivo + 1, totalPaginas);
   texto(5, 99, 1, GRAY, paginaTexto);
 
-  if (arquivoSlotAtual == 1) {
-    texto(5, 116, 1, CYAN, F("SW: VOLTAR"));
-  } else {
-    const __FlashStringHelper *acao = F("VOLTAR");
-    if (acaoArquivo == 0) acao = F("EDITAR");
-    else if (acaoArquivo == 1) acao = F("RENOMEAR");
-    else if (acaoArquivo == 2) acao = F("APAGAR");
-    texto(5, 108, 1, CYAN, acao);
-    texto(5, 119, 1, GRAY, F("ESQ/DIR: ACAO SW: OK"));
-  }
+  const __FlashStringHelper *acao = F("VOLTAR");
+  if (acaoArquivo == 0) acao = F("EDITAR");
+  else if (acaoArquivo == 1) acao = F("RENOMEAR");
+  else if (acaoArquivo == 2) acao = F("APAGAR");
+  texto(5, 108, 1, CYAN, acao);
+  texto(5, 119, 1, GRAY, F("ESQ/DIR: ACAO SW: OK"));
   mostrarTela();
 }
 
@@ -1182,11 +1157,6 @@ void selecionarTeclaEditor() {
 }
 
 void executarAcaoLeitor() {
-  if (arquivoSlotAtual == 1) {
-    mostrarListaArquivos();
-    return;
-  }
-
   if (acaoArquivo == 0) {
     editandoNomeArquivo = false;
     tecladoColuna = 0;
@@ -1332,7 +1302,7 @@ void atualizarNavegacao() {
     int dx = lerDirecaoX();
     int dy = lerDirecaoY();
     if (dx == 0 && dy == 0) return;
-    if (arquivoSlotAtual != 1 && dx != 0) {
+    if (dx != 0) {
       acaoArquivo = (acaoArquivo + 4 + dx) % 4;
     }
     if (dy < 0 && paginaArquivo > 0) paginaArquivo--;
