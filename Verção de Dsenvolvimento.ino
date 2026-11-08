@@ -449,8 +449,6 @@ void mostrarMenu() {
   }
 
   linha(5, 137, 123, 137, DARK);
-  texto(5, 141, 1, GRAY, F("SETAS: NAVEGAR"));
-  texto(5, 151, 1, CYAN, F("SW: ABRIR"));
   mostrarTela();
 }
 
@@ -486,8 +484,6 @@ void mostrarConfig() {
     if (item >= TOTAL_CONFIG) break;
     desenharItemConfig(item);
   }
-  texto(5, 137, 1, GRAY, F("SETAS: NAVEGAR"));
-  texto(5, 148, 1, CYAN, F("SW: SELECIONAR"));
   mostrarTela();
 }
 
@@ -514,8 +510,6 @@ void mostrarAjusteRotacao() {
     texto(9, y, 1, i == rotacaoTela ? CYAN : WHITE, opcoes[i]);
   }
 
-  texto(5, 126, 1, GRAY, F("ESQ/DIR: GIRAR"));
-  texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
   mostrarTela();
 }
 
@@ -534,8 +528,6 @@ void mostrarAjusteFonte() {
   snprintf_P(valor, sizeof(valor), PSTR("%d"), tamanhoFonte);
   texto(99, 53, 2, CYAN, valor);
 
-  texto(5, 121, 1, GRAY, F("ESQ/DIR: ALTERAR"));
-  texto(5, 145, 1, CYAN, F("SW: VOLTAR"));
   mostrarTela();
 }
 
@@ -802,7 +794,6 @@ void mostrarListaArquivos() {
   char memoria[20];
   snprintf_P(memoria, sizeof(memoria), PSTR("%u/5 ARQUIVOS"), qtdArquivos);
   texto(5, 137, 1, GRAY, memoria);
-  texto(5, 147, 1, CYAN, F("SW: ABRIR / SELECIONAR"));
   mostrarTela();
 }
 
@@ -943,7 +934,6 @@ void mostrarLeitorArquivo() {
   else if (acaoArquivo == 1) acao = F("RENOMEAR");
   else if (acaoArquivo == 2) acao = F("APAGAR");
   texto(5, 108, 1, CYAN, acao);
-  texto(5, 119, 1, GRAY, F("ESQ/DIR: ACAO SW: OK"));
   mostrarTela();
 }
 
@@ -1054,8 +1044,6 @@ void mostrarEditorArquivo() {
     desenharItemTeclado(TECLADO_LINHA_ACOES, col, (tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == col));
   }
 
-  texto(4, 132, 1, GRAY, F("JOY: MOVER  SW: USAR"));
-  texto(4, 144, 1, CYAN, F("RGB: COR  OK: SALVAR"));
   mostrarTela();
 }
 
