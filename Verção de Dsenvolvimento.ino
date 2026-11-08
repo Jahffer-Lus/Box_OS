@@ -27,13 +27,14 @@ Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define ORANGE F("#F39A38")
 #define RED F("#F04B4B")
 
-const byte TOTAL_APPS = 2;
+const byte TOTAL_APPS = 3;
 const byte TOTAL_CONFIG = 5;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
     case 0: return F("BOX FILES");
-    default: return F("CONFIG");
+    case 1: return F("CONFIG");
+    default: return F("SNAKE");
   }
 }
 
@@ -55,7 +56,8 @@ enum Screen {
   AJUSTAR_ROTACAO,
   FILE_LIST,
   FILE_VIEW,
-  FILE_EDIT
+  FILE_EDIT,
+  SNAKE_GAME
 };
 
 Screen tela = MENU;
@@ -507,7 +509,7 @@ void desenharItemMenu(byte indice) {
 
   // Limpa apenas a área ocupada pelo texto dessa opção.
   displayTFT.fillRect(5, y + 1, 118, 16, ST77XX_BLACK);
-  desenharIcone(indice, 8, y + 3, ativo ? corTFT(CYAN) : corTFT(WHITE));
+  desenharIcone(indice == 2 ? 9 : indice, 8, y + 3, ativo ? corTFT(CYAN) : corTFT(WHITE));
   texto(26, y + 1, 2, ativo ? CYAN : WHITE, nomeApp(indice));
 
   // Atualiza as duas linhas do destaque sem redesenhar o restante da tela.
@@ -659,7 +661,8 @@ void reiniciarBOX() {
 void abrirAplicativo() {
   switch (selecionado) {
     case 0: selecionadoArquivo = 0; mostrarListaArquivos(); break;
-    default: configSelecionada = 0; mostrarConfig(); break;
+    case 1: configSelecionada = 0; mostrarConfig(); break;
+    default: snakeIniciar(); break;
   }
 }
 
@@ -1290,6 +1293,162 @@ unsigned long ultimaFrameDino = 0;
 int obstaculoX = 120;
 int pontos = 0;
 
+// Snake: tabuleiro 20x15, com no maximo 100 segmentos.
+// Arrays pequenos para caber na memoria RAM do Arduino Uno.
+const byte SNAKE_COLUNAS = 20;
+const byte SNAKE_LINHAS = 15;
+const byte SNAKE_MAX = 100;
+const byte SNAKE_CELULA = 6;
+const int SNAKE_X = 20;
+const int SNAKE_Y = 28;
+byte snakeX[SNAKE_MAX];
+byte snakeY[SNAKE_MAX];
+byte snakeTamanho = 3;
+byte snakeDirX = 1;
+byte snakeDirY = 0;
+byte comidaX = 12;
+byte comidaY = 7;
+int snakePontos = 0;
+bool snakeGameOver = false;
+unsigned long snakeUltimoPasso = 0;
+const unsigned long SNAKE_INTERVALO = 190;
+
+void desenharCelulaSnake(byte gx, byte gy, uint16_t cor) {
+  displayTFT.fillRect(SNAKE_X + gx * SNAKE_CELULA + 1,
+                      SNAKE_Y + gy * SNAKE_CELULA + 1,
+                      SNAKE_CELULA - 1, SNAKE_CELULA - 1, cor);
+}
+
+bool snakeOcupado(byte gx, byte gy) {
+  for (byte i = 0; i < snakeTamanho; i++) {
+    if (snakeX[i] == gx && snakeY[i] == gy) return true;
+  }
+  return false;
+}
+
+void snakeCriarComida() {
+  byte tentativas = 0;
+  do {
+    comidaX = random(SNAKE_COLUNAS);
+    comidaY = random(SNAKE_LINHAS);
+    tentativas++;
+  } while (snakeOcupado(comidaX, comidaY) && tentativas < 80);
+  displayTFT.fillCircle(SNAKE_X + comidaX * SNAKE_CELULA + 3,
+                        SNAKE_Y + comidaY * SNAKE_CELULA + 3, 2,
+                        displayTFT.color565(255, 65, 75));
+}
+
+void snakeDesenharHUD() {
+  displayTFT.fillRect(0, 0, 160, 24, ST77XX_BLACK);
+  texto(4, 4, 1, CYAN, F("SNAKE"));
+  char placar[18];
+  snprintf_P(placar, sizeof(placar), PSTR("PONTOS: %d"), snakePontos);
+  texto(91, 7, 1, WHITE, placar);
+}
+
+void snakeIniciar() {
+  snakeTamanho = 3;
+  snakeX[0] = 9; snakeY[0] = 7;
+  snakeX[1] = 8; snakeY[1] = 7;
+  snakeX[2] = 7; snakeY[2] = 7;
+  snakeDirX = 1; snakeDirY = 0;
+  snakePontos = 0;
+  snakeGameOver = false;
+  snakeUltimoPasso = millis();
+  tela = SNAKE_GAME;
+
+  limpar();
+  snakeDesenharHUD();
+  displayTFT.drawRect(SNAKE_X - 1, SNAKE_Y - 1,
+                      SNAKE_COLUNAS * SNAKE_CELULA + 2,
+                      SNAKE_LINHAS * SNAKE_CELULA + 2, corTFT(DARK));
+  for (byte i = 0; i < snakeTamanho; i++) {
+    desenharCelulaSnake(snakeX[i], snakeY[i],
+      i == 0 ? displayTFT.color565(255, 215, 80)
+             : displayTFT.color565(55, 210, 115));
+  }
+  snakeCriarComida();
+  mostrarTela();
+}
+
+void snakeFimDeJogo() {
+  snakeGameOver = true;
+  displayTFT.fillRect(25, 52, 110, 28, ST77XX_BLACK);
+  displayTFT.drawRect(25, 52, 110, 28, corTFT(RED));
+  textoCentro(80, 58, 1, RED, F("FIM DE JOGO"));
+  textoCentro(80, 69, 1, WHITE, F("MOVA PARA REINICIAR"));
+}
+
+void snakePasso() {
+  if (snakeGameOver) return;
+  int nx = (int)snakeX[0] + snakeDirX;
+  int ny = (int)snakeY[0] + snakeDirY;
+
+  if (nx < 0 || nx >= SNAKE_COLUNAS || ny < 0 || ny >= SNAKE_LINHAS) {
+    snakeFimDeJogo();
+    return;
+  }
+
+  bool comeu = (nx == comidaX && ny == comidaY);
+  byte limiteCorpo = comeu ? snakeTamanho : snakeTamanho - 1;
+  for (byte i = 0; i < limiteCorpo; i++) {
+    if (snakeX[i] == nx && snakeY[i] == ny) {
+      snakeFimDeJogo();
+      return;
+    }
+  }
+
+  if (comeu && snakeTamanho < SNAKE_MAX) {
+    snakeTamanho++;
+    snakePontos += 10;
+  } else {
+    desenharCelulaSnake(snakeX[snakeTamanho - 1],
+                        snakeY[snakeTamanho - 1], ST77XX_BLACK);
+  }
+
+  for (int i = snakeTamanho - 1; i > 0; i--) {
+    snakeX[i] = snakeX[i - 1];
+    snakeY[i] = snakeY[i - 1];
+  }
+  snakeX[0] = (byte)nx;
+  snakeY[0] = (byte)ny;
+
+  desenharCelulaSnake(snakeX[1], snakeY[1],
+                      displayTFT.color565(55, 210, 115));
+  desenharCelulaSnake(snakeX[0], snakeY[0],
+                      displayTFT.color565(255, 215, 80));
+
+  if (comeu) {
+    snakeDesenharHUD();
+    snakeCriarComida();
+    somSucesso();
+  }
+}
+
+void atualizarSnake() {
+  int dx = lerDirecaoX();
+  int dy = lerDirecaoY();
+
+  if (snakeGameOver) {
+    if (dx != 0 || dy != 0) snakeIniciar();
+    return;
+  }
+
+  // Evita que a cobrinha volte diretamente contra o proprio corpo.
+  if (dx != 0 && snakeDirX == 0) {
+    snakeDirX = dx;
+    snakeDirY = 0;
+  } else if (dy != 0 && snakeDirY == 0) {
+    snakeDirX = 0;
+    snakeDirY = dy;
+  }
+
+  if (millis() - snakeUltimoPasso >= SNAKE_INTERVALO) {
+    snakeUltimoPasso = millis();
+    snakePasso();
+  }
+}
+
 void selecionarConfig() {
   switch (configSelecionada) {
     case 0: mostrarAjusteFonte(); break;
@@ -1301,6 +1460,10 @@ void selecionarConfig() {
 }
 
 void atualizarNavegacao() {
+  if (tela == SNAKE_GAME) {
+    atualizarSnake();
+    return;
+  }
   if (millis() - ultimoMovimento < 110) return;
 
   if (tela == FILE_EDIT) {
@@ -1473,6 +1636,9 @@ void atualizarBotao() {
       break;
     case FILE_EDIT:
       selecionarTeclaEditor();
+      break;
+    case SNAKE_GAME:
+      mostrarMenu();
       break;
   }
 }
