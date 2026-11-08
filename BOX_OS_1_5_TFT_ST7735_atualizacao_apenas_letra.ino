@@ -754,6 +754,36 @@ void desenharBarraArmazenamento(bool mostrarDetalhes) {
   }
 }
 
+// Atualiza somente uma linha visível da lista, incluindo seu destaque.
+void desenharItemListaArquivo(byte item, byte primeiro) {
+  if (item < primeiro) return;
+  byte linhaLista = item - primeiro;
+  if (linhaLista >= 5) return;
+
+  byte totalItens = qtdArquivos + (temEspacoArquivo ? 1 : 0) + 1;
+  if (item >= totalItens) return;
+
+  int y = 43 + linhaLista * 17;
+  bool ativo = (item == selecionadoArquivo);
+
+  // Limpa apenas a área do texto desta linha.
+  displayTFT.fillRect(5, y, 118, 9, ST77XX_BLACK);
+
+  if (item < qtdArquivos) {
+    char nome[FILE_NAME_SIZE + 1];
+    lerNomeArquivo(indicesArquivos[item], nome);
+    texto(8, y, 1, ativo ? CYAN : WHITE, nome);
+  } else if (temEspacoArquivo && item == qtdArquivos) {
+    texto(8, y, 1, ativo ? CYAN : WHITE, F("NOVO ARQUIVO"));
+  } else {
+    texto(8, y, 1, ativo ? CYAN : WHITE, F("VOLTAR"));
+  }
+
+  uint16_t cor = ativo ? corTFT(CYAN) : ST77XX_BLACK;
+  displayTFT.drawFastHLine(4, y - 3, 120, cor);
+  displayTFT.drawFastHLine(4, y + 13, 120, cor);
+}
+
 void mostrarListaArquivos() {
   tela = FILE_LIST;
   atualizarListaArquivos();
@@ -778,26 +808,7 @@ void mostrarListaArquivos() {
   for (byte linhaLista = 0; linhaLista < 5; linhaLista++) {
     byte item = primeiro + linhaLista;
     if (item >= totalItens) break;
-
-    int y = 43 + linhaLista * 17;
-    if (item == selecionadoArquivo) {
-      linha(4, y - 3, 124, y - 3, CYAN);
-      linha(4, y + 13, 124, y + 13, CYAN);
-    }
-
-    if (item < qtdArquivos) {
-      char nome[FILE_NAME_SIZE + 1];
-      lerNomeArquivo(indicesArquivos[item], nome);
-      texto(8, y, 1, item == selecionadoArquivo ? CYAN : WHITE, nome);
-    }
-    else if (temEspacoArquivo && item == qtdArquivos) {
-      texto(8, y, 1, item == selecionadoArquivo ? CYAN : WHITE,
-            F("NOVO ARQUIVO"));
-    }
-    else {
-      texto(8, y, 1, item == selecionadoArquivo ? CYAN : WHITE,
-            F("VOLTAR"));
-    }
+    desenharItemListaArquivo(item, primeiro);
   }
 
   char memoria[20];
@@ -1293,11 +1304,27 @@ void atualizarNavegacao() {
   if (tela == FILE_LIST) {
     int dy = lerDirecaoY();
     if (dy == 0) return;
+
     atualizarListaArquivos();
     byte totalItens = qtdArquivos + (temEspacoArquivo ? 1 : 0) + 1;
+    byte anterior = selecionadoArquivo;
+    byte primeiroAnterior = (anterior >= 5) ? anterior - 4 : 0;
+
     selecionadoArquivo = (selecionadoArquivo + totalItens + dy) % totalItens;
+    byte primeiroNovo = (selecionadoArquivo >= 5) ? selecionadoArquivo - 4 : 0;
+
     ultimoMovimento = millis();
-    mostrarListaArquivos();
+    somNavegacao();
+
+    if (primeiroAnterior != primeiroNovo) {
+      // A janela visível mudou: reposiciona as linhas da lista.
+      mostrarListaArquivos();
+    } else {
+      // A janela não mudou: atualiza somente a linha antiga e a nova.
+      desenharItemListaArquivo(anterior, primeiroNovo);
+      desenharItemListaArquivo(selecionadoArquivo, primeiroNovo);
+      mostrarTela();
+    }
     return;
   }
 
