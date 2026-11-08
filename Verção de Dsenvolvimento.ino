@@ -123,7 +123,9 @@ const byte TECLADO_LINHAS = 4;
 const byte TECLADO_LINHA_ACOES = 4;
 const byte ACAO_DEL = 0;
 const byte ACAO_ESPACO = 1;
-const byte ACAO_OK = 2;
+const byte ACAO_ENTER = 2;
+const byte ACAO_OK = 3;
+const byte TOTAL_ACOES_TECLADO = 4;
 
 
 void limpar() {
@@ -1025,11 +1027,11 @@ byte colunaQwertyMaisProxima(byte linhaTeclado, int centroDesejado) {
 }
 
 byte acaoQwertyMaisProxima(int centroDesejado) {
-  const int centrosAcoes[3] = {20, 64, 108};
+  const int centrosAcoes[TOTAL_ACOES_TECLADO] = {17, 55, 99, 135};
   byte melhor = 0;
   int menorDistancia = 32767;
 
-  for (byte i = 0; i < 3; i++) {
+  for (byte i = 0; i < TOTAL_ACOES_TECLADO; i++) {
     int distancia = abs(centrosAcoes[i] - centroDesejado);
     if (distancia < menorDistancia) {
       menorDistancia = distancia;
@@ -1043,10 +1045,12 @@ byte acaoQwertyMaisProxima(int centroDesejado) {
 void desenharItemTeclado(byte row, byte col, bool ativo) {
 
   if (row == TECLADO_LINHA_ACOES) {
-    int x = (col == ACAO_DEL) ? 5 : (col == ACAO_ESPACO ? 40 : 93);
-    int largura = (col == ACAO_ESPACO) ? 48 : 30;
-    const char *rotulo = (col == ACAO_DEL) ? "DEL" :
-                         (col == ACAO_ESPACO ? "ESPACO" : "OK");
+    const int posicoes[TOTAL_ACOES_TECLADO] = {3, 33, 79, 121};
+    const int larguras[TOTAL_ACOES_TECLADO] = {28, 44, 40, 28};
+    const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL", "ESPACO", "ENTER", "OK"};
+    int x = posicoes[col];
+    int largura = larguras[col];
+    const char *rotulo = rotulos[col];
     retanguloArredondado(x, 113, largura, 12, 2, ativo ? CYAN : DARK);
     textoCentro(x + largura / 2, 119, 1, ativo ? CYAN : WHITE, rotulo);
     return;
@@ -1078,10 +1082,11 @@ void mostrarEditorArquivo() {
       n++;
     }
   } else {
-    uint16_t inicio = tamanhoConteudo > 18 ? tamanhoConteudo - 18 : 0;
-    while (n < 18 && inicio + n < tamanhoConteudo) {
-      trecho[n] = conteudoArquivo[inicio + n];
-      n++;
+    uint16_t inicio = tamanhoConteudo;
+    while (inicio > 0 && conteudoArquivo[inicio - 1] != '\n') inicio--;
+    uint16_t inicioVisivel = tamanhoConteudo > inicio + 18 ? tamanhoConteudo - 18 : inicio;
+    for (uint16_t i = inicioVisivel; i < tamanhoConteudo && n < 18; i++) {
+      if (conteudoArquivo[i] != '\n') trecho[n++] = conteudoArquivo[i];
     }
   }
   trecho[n] = '\0';
@@ -1100,7 +1105,7 @@ void mostrarEditorArquivo() {
       desenharItemTeclado(row, col, (tecladoLinha == row && tecladoColuna == col));
     }
   }
-  for (byte col = 0; col < 3; col++) {
+  for (byte col = 0; col < TOTAL_ACOES_TECLADO; col++) {
     desenharItemTeclado(TECLADO_LINHA_ACOES, col, (tecladoLinha == TECLADO_LINHA_ACOES && tecladoColuna == col));
   }
 
@@ -1172,6 +1177,15 @@ void selecionarTeclaEditor() {
         conteudoArquivo[tamanhoConteudo] = '\0';
       }
 
+      mostrarEditorArquivo();
+      return;
+    }
+
+    if (tecladoColuna == ACAO_ENTER) {
+      if (!editandoNomeArquivo && tamanhoConteudo < FILE_MAX_TEXT) {
+        conteudoArquivo[tamanhoConteudo++] = '\n';
+        conteudoArquivo[tamanhoConteudo] = '\0';
+      }
       mostrarEditorArquivo();
       return;
     }
@@ -1315,12 +1329,12 @@ void atualizarNavegacao() {
       if (dx != 0) {
         int novaAcao = (int)tecladoColuna + dx;
         if (novaAcao < 0) novaAcao = 0;
-        if (novaAcao > 2) novaAcao = 2;
+        if (novaAcao >= TOTAL_ACOES_TECLADO) novaAcao = TOTAL_ACOES_TECLADO - 1;
         tecladoColuna = novaAcao;
       }
 
       if (dy < 0) {
-        const int centrosAcoes[3] = {20, 64, 108};
+        const int centrosAcoes[TOTAL_ACOES_TECLADO] = {17, 55, 99, 135};
         int centroAtual = centrosAcoes[tecladoColuna];
         tecladoLinha = 3;
         tecladoColuna = colunaQwertyMaisProxima(3, centroAtual);
