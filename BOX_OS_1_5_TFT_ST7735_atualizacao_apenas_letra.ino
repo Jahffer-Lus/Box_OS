@@ -413,23 +413,31 @@ void desenharCubo(float angulo, float pulo) {
   }
 }
 
+// Redesenha somente uma opção do menu, sem tocar nos textos fixos.
+void desenharItemMenu(byte indice) {
+  if (indice >= TOTAL_APPS) return;
+  int y = 42 + indice * 18;
+  bool ativo = (indice == selecionado);
+
+  // Limpa apenas a área ocupada pelo texto dessa opção.
+  displayTFT.fillRect(7, y + 1, 116, 16, ST77XX_BLACK);
+  texto(10, y + 1, 2, ativo ? CYAN : WHITE, nomeApp(indice));
+
+  // Atualiza as duas linhas do destaque sem redesenhar o restante da tela.
+  uint16_t cor = ativo ? corTFT(CYAN) : ST77XX_BLACK;
+  displayTFT.drawFastHLine(5, y - 3, 119, cor);
+  displayTFT.drawFastHLine(5, y + 17, 119, cor);
+}
+
 void mostrarMenu() {
   tela = MENU;
   limpar();
 
   texto(5, 3, 3, CYAN, F("APLICATIVOS"));
-
   linha(5, 38, 123, 38, GRAY);
 
   for (byte i = 0; i < TOTAL_APPS; i++) {
-    int y = 42 + i * 18;
-
-    if (i == selecionado) {
-      linha(5, y - 3, 123, y - 3, CYAN);
-      linha(5, y + 17, 123, y + 17, CYAN);
-    }
-
-    texto(10, y + 1, 2, i == selecionado ? CYAN : WHITE, nomeApp(i));
+    desenharItemMenu(i);
   }
 
   linha(5, 137, 123, 137, DARK);
@@ -438,6 +446,23 @@ void mostrarMenu() {
   mostrarTela();
 }
 
+
+// Redesenha somente o texto e o destaque de uma opção da configuração.
+void desenharItemConfig(byte item) {
+  if (item < configPrimeira || item >= TOTAL_CONFIG) return;
+  byte linhaMenu = item - configPrimeira;
+  if (linhaMenu >= 5) return;
+
+  int y = 31 + linhaMenu * 20;
+  bool ativo = (item == configSelecionada);
+
+  displayTFT.fillRect(5, y, 118, 8, ST77XX_BLACK);
+  texto(8, y, 1, ativo ? CYAN : WHITE, nomeOpcaoConfig(item));
+
+  uint16_t cor = ativo ? corTFT(CYAN) : ST77XX_BLACK;
+  displayTFT.drawFastHLine(4, y - 3, 120, cor);
+  displayTFT.drawFastHLine(4, y + 15, 120, cor);
+}
 
 void mostrarConfig() {
   tela = CONFIG;
@@ -451,13 +476,7 @@ void mostrarConfig() {
   for (byte linhaMenu = 0; linhaMenu < 5; linhaMenu++) {
     byte item = configPrimeira + linhaMenu;
     if (item >= TOTAL_CONFIG) break;
-    int y = 31 + linhaMenu * 20;
-    if (item == configSelecionada) {
-      linha(4, y - 3, 124, y - 3, CYAN);
-      linha(4, y + 15, 124, y + 15, CYAN);
-    }
-    texto(8, y, 1, item == configSelecionada ? CYAN : WHITE,
-          nomeOpcaoConfig(item));
+    desenharItemConfig(item);
   }
   texto(5, 137, 1, GRAY, F("SETAS: NAVEGAR"));
   texto(5, 148, 1, CYAN, F("SW: SELECIONAR"));
@@ -1313,12 +1332,22 @@ void atualizarNavegacao() {
   somNavegacao();
 
   if (tela == MENU) {
+    byte anterior = selecionado;
     selecionado = (selecionado + TOTAL_APPS + direcao) % TOTAL_APPS;
-    mostrarMenu();
+
+    // Atualiza somente a opção que perdeu o foco e a que recebeu o foco.
+    desenharItemMenu(anterior);
+    desenharItemMenu(selecionado);
+    mostrarTela();
   }
   else if (tela == CONFIG) {
+    byte anterior = configSelecionada;
     configSelecionada = (configSelecionada + TOTAL_CONFIG + direcao) % TOTAL_CONFIG;
-    mostrarConfig();
+
+    // Atualiza somente a opção antiga e a nova.
+    desenharItemConfig(anterior);
+    desenharItemConfig(configSelecionada);
+    mostrarTela();
   }
   else if (tela == AJUSTAR_FONTE) {
     if (direcao < 0 && tamanhoFonte > 1) tamanhoFonte--;
