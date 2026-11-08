@@ -297,65 +297,88 @@ void retanguloArredondado(int x, int y, int largura, int altura, int raio, const
   displayTFT.fillRoundRect(x, y, largura, altura, raio, corTFT(cor));
 }
 
+// Icones em pixel art colorida, com visual inspirado em emojis.
+// Usa apenas primitivas da Adafruit GFX; nao depende de fonte de emojis.
 void desenharIcone(byte tipo, int x, int y, uint16_t cor) {
+  uint16_t contorno = cor;
+  uint16_t amarelo = displayTFT.color565(255, 190, 45);
+  uint16_t amareloClaro = displayTFT.color565(255, 225, 105);
+  uint16_t azul = displayTFT.color565(45, 155, 255);
+  uint16_t azulClaro = displayTFT.color565(115, 205, 255);
+  uint16_t verde = displayTFT.color565(55, 210, 115);
+  uint16_t verdeClaro = displayTFT.color565(145, 245, 165);
+  uint16_t vermelho = displayTFT.color565(245, 75, 75);
+  uint16_t cinza = displayTFT.color565(175, 190, 205);
+  uint16_t escuro = displayTFT.color565(55, 75, 95);
+
   switch (tipo) {
-    case 0: // Pasta: BOX FILES
-      displayTFT.drawLine(x, y + 3, x + 4, y + 3, cor);
-      displayTFT.drawLine(x + 1, y + 2, x + 4, y + 2, cor);
-      displayTFT.drawLine(x + 4, y + 2, x + 6, y + 4, cor);
-      displayTFT.drawRect(x, y + 4, 12, 7, cor);
-      displayTFT.drawLine(x + 1, y + 6, x + 10, y + 6, cor);
+    case 0: // Pasta amarela: BOX FILES
+      displayTFT.fillRect(x + 1, y + 3, 6, 3, amareloClaro);
+      displayTFT.fillRect(x, y + 5, 13, 7, amarelo);
+      displayTFT.fillRect(x + 2, y + 7, 9, 3, amareloClaro);
+      displayTFT.drawRect(x, y + 5, 13, 7, contorno);
       break;
 
-    case 1: // Engrenagem simplificada: CONFIG
-      displayTFT.drawCircle(x + 6, y + 6, 4, cor);
-      displayTFT.drawCircle(x + 6, y + 6, 1, cor);
-      displayTFT.drawFastVLine(x + 6, y, 2, cor);
-      displayTFT.drawFastVLine(x + 6, y + 10, 2, cor);
-      displayTFT.drawFastHLine(x, y + 6, 2, cor);
-      displayTFT.drawFastHLine(x + 10, y + 6, 2, cor);
+    case 1: // Engrenagem azul: CONFIG
+      displayTFT.fillRect(x + 4, y, 4, 12, azul);
+      displayTFT.fillRect(x, y + 4, 12, 4, azul);
+      displayTFT.fillRect(x + 2, y + 2, 8, 8, azul);
+      displayTFT.fillRect(x + 4, y + 4, 4, 4, ST77XX_BLACK);
+      displayTFT.fillRect(x + 5, y + 5, 2, 2, azulClaro);
       break;
 
-    case 2: // Fonte
-      displayTFT.drawLine(x + 1, y + 10, x + 5, y + 1, cor);
-      displayTFT.drawLine(x + 5, y + 1, x + 9, y + 10, cor);
-      displayTFT.drawFastHLine(x + 3, y + 7, 5, cor);
+    case 2: // Letras coloridas: tamanho da fonte
+      displayTFT.fillRect(x + 1, y + 1, 4, 3, vermelho);
+      displayTFT.fillRect(x + 1, y + 4, 4, 2, vermelho);
+      displayTFT.fillRect(x + 1, y + 6, 4, 4, vermelho);
+      displayTFT.fillRect(x + 7, y + 4, 4, 2, azulClaro);
+      displayTFT.fillRect(x + 7, y + 6, 4, 4, azulClaro);
+      displayTFT.fillRect(x + 7, y + 8, 4, 2, azulClaro);
       break;
 
-    case 3: // Rotação
-      displayTFT.drawCircle(x + 6, y + 6, 4, cor);
-      displayTFT.drawLine(x + 7, y + 1, x + 11, y + 1, cor);
-      displayTFT.drawLine(x + 11, y + 1, x + 11, y + 5, cor);
+    case 3: // Tela com setas: rotacao
+      displayTFT.drawRect(x + 1, y + 1, 10, 9, azulClaro);
+      displayTFT.fillRect(x + 3, y + 3, 6, 5, azul);
+      displayTFT.drawPixel(x + 9, y, contorno);
+      displayTFT.drawPixel(x + 11, y + 2, contorno);
+      displayTFT.drawPixel(x, y + 9, contorno);
       break;
 
-    case 4: // Desligar
-      displayTFT.drawCircle(x + 6, y + 7, 4, cor);
-      displayTFT.drawFastVLine(x + 6, y, 6, cor);
+    case 4: // Botao vermelho de desligar
+      displayTFT.fillCircle(x + 6, y + 7, 5, vermelho);
+      displayTFT.fillRect(x + 5, y, 3, 7, ST77XX_BLACK);
+      displayTFT.fillRect(x + 6, y + 2, 1, 5, ST77XX_WHITE);
       break;
 
-    case 5: // Reiniciar
-      displayTFT.drawCircle(x + 6, y + 6, 4, cor);
-      displayTFT.drawLine(x + 6, y + 2, x + 10, y + 2, cor);
-      displayTFT.drawLine(x + 10, y + 2, x + 10, y + 6, cor);
+    case 5: // Reiniciar: setas verdes em bloco
+      displayTFT.fillRect(x + 3, y + 1, 6, 3, verde);
+      displayTFT.fillRect(x + 8, y + 3, 3, 5, verde);
+      displayTFT.fillRect(x + 3, y + 8, 6, 3, verde);
+      displayTFT.fillRect(x + 1, y + 4, 3, 5, verde);
+      displayTFT.fillRect(x + 8, y, 3, 3, verdeClaro);
+      displayTFT.fillRect(x, y + 8, 3, 3, verdeClaro);
       break;
 
-    case 6: // Voltar
-      displayTFT.drawFastHLine(x + 2, y + 5, 9, cor);
-      displayTFT.drawLine(x + 2, y + 5, x + 6, y + 1, cor);
-      displayTFT.drawLine(x + 2, y + 5, x + 6, y + 9, cor);
+    case 6: // Voltar: seta clara
+      displayTFT.fillRect(x + 4, y + 4, 8, 4, cinza);
+      displayTFT.fillRect(x + 1, y + 3, 5, 2, cinza);
+      displayTFT.fillRect(x + 1, y + 7, 5, 2, cinza);
+      displayTFT.fillRect(x, y + 4, 3, 4, ST77XX_WHITE);
       break;
 
-    case 7: // Arquivo
-      displayTFT.drawRect(x + 2, y, 8, 11, cor);
-      displayTFT.drawFastHLine(x + 4, y + 3, 4, cor);
-      displayTFT.drawFastHLine(x + 4, y + 6, 4, cor);
-      displayTFT.drawFastHLine(x + 4, y + 9, 3, cor);
+    case 7: // Documento azul
+      displayTFT.fillRect(x + 2, y, 8, 12, azul);
+      displayTFT.fillRect(x + 3, y + 1, 6, 10, azulClaro);
+      displayTFT.fillRect(x + 4, y + 3, 4, 1, escuro);
+      displayTFT.fillRect(x + 4, y + 6, 4, 1, escuro);
+      displayTFT.fillRect(x + 4, y + 9, 3, 1, escuro);
       break;
 
-    case 8: // Novo arquivo
-      displayTFT.drawRect(x + 2, y, 8, 11, cor);
-      displayTFT.drawFastHLine(x + 4, y + 5, 4, cor);
-      displayTFT.drawFastVLine(x + 6, y + 3, 5, cor);
+    case 8: // Documento com sinal de mais: novo arquivo
+      displayTFT.fillRect(x + 1, y, 8, 12, verde);
+      displayTFT.fillRect(x + 2, y + 1, 6, 10, verdeClaro);
+      displayTFT.fillRect(x + 4, y + 5, 4, 2, verde);
+      displayTFT.fillRect(x + 5, y + 4, 2, 4, verde);
       break;
   }
 }
