@@ -102,6 +102,7 @@ byte paginaArquivo = 0;
 char nomeArquivoAtual[FILE_NAME_SIZE + 1];
 char conteudoArquivo[FILE_MAX_TEXT + 1];
 uint16_t tamanhoConteudo = 0;
+byte corTextoAtual = 0;
 byte tecladoColuna = 0;
 byte tecladoLinha = 0;
 bool editandoNomeArquivo = false;
@@ -124,8 +125,13 @@ const byte TECLADO_LINHA_ACOES = 4;
 const byte ACAO_DEL = 0;
 const byte ACAO_ESPACO = 1;
 const byte ACAO_ENTER = 2;
-const byte ACAO_OK = 3;
-const byte TOTAL_ACOES_TECLADO = 4;
+const byte ACAO_RGB = 3;
+const byte ACAO_OK = 4;
+const byte TOTAL_ACOES_TECLADO = 5;
+const byte MARCA_VERMELHO = 1;
+const byte MARCA_VERDE = 2;
+const byte MARCA_AZUL = 3;
+const byte MARCA_BRANCO = 4;
 
 
 void limpar() {
@@ -299,92 +305,6 @@ void retanguloArredondado(int x, int y, int largura, int altura, int raio, const
   displayTFT.fillRoundRect(x, y, largura, altura, raio, corTFT(cor));
 }
 
-// Icones em pixel art colorida, com visual inspirado em emojis.
-// Usa apenas primitivas da Adafruit GFX; nao depende de fonte de emojis.
-void desenharIcone(byte tipo, int x, int y, uint16_t cor) {
-  uint16_t contorno = cor;
-  uint16_t amarelo = displayTFT.color565(255, 190, 45);
-  uint16_t amareloClaro = displayTFT.color565(255, 225, 105);
-  uint16_t azul = displayTFT.color565(45, 155, 255);
-  uint16_t azulClaro = displayTFT.color565(115, 205, 255);
-  uint16_t verde = displayTFT.color565(55, 210, 115);
-  uint16_t verdeClaro = displayTFT.color565(145, 245, 165);
-  uint16_t vermelho = displayTFT.color565(245, 75, 75);
-  uint16_t cinza = displayTFT.color565(175, 190, 205);
-  uint16_t escuro = displayTFT.color565(55, 75, 95);
-
-  switch (tipo) {
-    case 0: // Pasta amarela: BOX FILES
-      displayTFT.fillRect(x + 1, y + 3, 6, 3, amareloClaro);
-      displayTFT.fillRect(x, y + 5, 13, 7, amarelo);
-      displayTFT.fillRect(x + 2, y + 7, 9, 3, amareloClaro);
-      displayTFT.drawRect(x, y + 5, 13, 7, contorno);
-      break;
-
-    case 1: // Engrenagem azul: CONFIG
-      displayTFT.fillRect(x + 4, y, 4, 12, azul);
-      displayTFT.fillRect(x, y + 4, 12, 4, azul);
-      displayTFT.fillRect(x + 2, y + 2, 8, 8, azul);
-      displayTFT.fillRect(x + 4, y + 4, 4, 4, ST77XX_BLACK);
-      displayTFT.fillRect(x + 5, y + 5, 2, 2, azulClaro);
-      break;
-
-    case 2: // Letras coloridas: tamanho da fonte
-      displayTFT.fillRect(x + 1, y + 1, 4, 3, vermelho);
-      displayTFT.fillRect(x + 1, y + 4, 4, 2, vermelho);
-      displayTFT.fillRect(x + 1, y + 6, 4, 4, vermelho);
-      displayTFT.fillRect(x + 7, y + 4, 4, 2, azulClaro);
-      displayTFT.fillRect(x + 7, y + 6, 4, 4, azulClaro);
-      displayTFT.fillRect(x + 7, y + 8, 4, 2, azulClaro);
-      break;
-
-    case 3: // Tela com setas: rotacao
-      displayTFT.drawRect(x + 1, y + 1, 10, 9, azulClaro);
-      displayTFT.fillRect(x + 3, y + 3, 6, 5, azul);
-      displayTFT.drawPixel(x + 9, y, contorno);
-      displayTFT.drawPixel(x + 11, y + 2, contorno);
-      displayTFT.drawPixel(x, y + 9, contorno);
-      break;
-
-    case 4: // Botao vermelho de desligar
-      displayTFT.fillCircle(x + 6, y + 7, 5, vermelho);
-      displayTFT.fillRect(x + 5, y, 3, 7, ST77XX_BLACK);
-      displayTFT.fillRect(x + 6, y + 2, 1, 5, ST77XX_WHITE);
-      break;
-
-    case 5: // Reiniciar: setas verdes em bloco
-      displayTFT.fillRect(x + 3, y + 1, 6, 3, verde);
-      displayTFT.fillRect(x + 8, y + 3, 3, 5, verde);
-      displayTFT.fillRect(x + 3, y + 8, 6, 3, verde);
-      displayTFT.fillRect(x + 1, y + 4, 3, 5, verde);
-      displayTFT.fillRect(x + 8, y, 3, 3, verdeClaro);
-      displayTFT.fillRect(x, y + 8, 3, 3, verdeClaro);
-      break;
-
-    case 6: // Voltar: seta clara
-      displayTFT.fillRect(x + 4, y + 4, 8, 4, cinza);
-      displayTFT.fillRect(x + 1, y + 3, 5, 2, cinza);
-      displayTFT.fillRect(x + 1, y + 7, 5, 2, cinza);
-      displayTFT.fillRect(x, y + 4, 3, 4, ST77XX_WHITE);
-      break;
-
-    case 7: // Documento azul
-      displayTFT.fillRect(x + 2, y, 8, 12, azul);
-      displayTFT.fillRect(x + 3, y + 1, 6, 10, azulClaro);
-      displayTFT.fillRect(x + 4, y + 3, 4, 1, escuro);
-      displayTFT.fillRect(x + 4, y + 6, 4, 1, escuro);
-      displayTFT.fillRect(x + 4, y + 9, 3, 1, escuro);
-      break;
-
-    case 8: // Documento com sinal de mais: novo arquivo
-      displayTFT.fillRect(x + 1, y, 8, 12, verde);
-      displayTFT.fillRect(x + 2, y + 1, 6, 10, verdeClaro);
-      displayTFT.fillRect(x + 4, y + 5, 4, 2, verde);
-      displayTFT.fillRect(x + 5, y + 4, 2, 4, verde);
-      break;
-  }
-}
-
 void textoCentro(int x, int y, int tamanho, const __FlashStringHelper *cor, const char *mensagem) {
   desenharTextoTFT(x, y, tamanho, corTFT(cor), mensagem, true);
 }
@@ -509,8 +429,7 @@ void desenharItemMenu(byte indice) {
 
   // Limpa apenas a área ocupada pelo texto dessa opção.
   displayTFT.fillRect(5, y + 1, 118, 16, ST77XX_BLACK);
-  desenharIcone(indice, 8, y + 3, ativo ? corTFT(CYAN) : corTFT(WHITE));
-  texto(26, y + 1, 2, ativo ? CYAN : WHITE, nomeApp(indice));
+  texto(8, y + 1, 2, ativo ? CYAN : WHITE, nomeApp(indice));
 
   // Atualiza as duas linhas do destaque sem redesenhar o restante da tela.
   uint16_t cor = ativo ? corTFT(CYAN) : ST77XX_BLACK;
@@ -546,8 +465,7 @@ void desenharItemConfig(byte item) {
   bool ativo = (item == configSelecionada);
 
   displayTFT.fillRect(4, y - 1, 120, 12, ST77XX_BLACK);
-  desenharIcone(item + 2, 7, y - 1, ativo ? corTFT(CYAN) : corTFT(WHITE));
-  texto(24, y, 1, ativo ? CYAN : WHITE, nomeOpcaoConfig(item));
+  texto(7, y, 1, ativo ? CYAN : WHITE, nomeOpcaoConfig(item));
 
   uint16_t cor = ativo ? corTFT(CYAN) : ST77XX_BLACK;
   displayTFT.drawFastHLine(4, y - 3, 120, cor);
@@ -842,14 +760,11 @@ void desenharItemListaArquivo(byte item, byte primeiro) {
   if (item < qtdArquivos) {
     char nome[FILE_NAME_SIZE + 1];
     lerNomeArquivo(indicesArquivos[item], nome);
-    desenharIcone(7, 7, y - 1, ativo ? corTFT(CYAN) : corTFT(WHITE));
-    texto(24, y, 1, ativo ? CYAN : WHITE, nome);
+    texto(7, y, 1, ativo ? CYAN : WHITE, nome);
   } else if (temEspacoArquivo && item == qtdArquivos) {
-    desenharIcone(8, 7, y - 1, ativo ? corTFT(CYAN) : corTFT(WHITE));
-    texto(24, y, 1, ativo ? CYAN : WHITE, F("NOVO ARQUIVO"));
+    texto(7, y, 1, ativo ? CYAN : WHITE, F("NOVO ARQUIVO"));
   } else {
-    desenharIcone(6, 7, y - 1, ativo ? corTFT(CYAN) : corTFT(WHITE));
-    texto(24, y, 1, ativo ? CYAN : WHITE, F("VOLTAR"));
+    texto(7, y, 1, ativo ? CYAN : WHITE, F("VOLTAR"));
   }
 
   uint16_t cor = ativo ? corTFT(CYAN) : ST77XX_BLACK;
@@ -917,6 +832,7 @@ void criarArquivoNovo() {
   somSucesso();
   carregarArquivo(slotLivre);
   editandoNomeArquivo = false;
+  corTextoAtual = 0;
   tecladoColuna = 0;
   tecladoLinha = 0;
   mostrarEditorArquivo();
@@ -942,9 +858,68 @@ void abrirArquivoSelecionado() {
 
   if (selecionadoArquivo < qtdArquivos) {
     carregarArquivo(indicesArquivos[selecionadoArquivo]);
+    corTextoAtual = ultimaCorConteudo();
     paginaArquivo = 0;
     acaoArquivo = 0;
     mostrarLeitorArquivo();
+  }
+}
+
+
+uint16_t corMarcadorTFT(byte cor) {
+  if (cor == MARCA_VERMELHO) return displayTFT.color565(255, 55, 55);
+  if (cor == MARCA_VERDE) return displayTFT.color565(45, 230, 110);
+  if (cor == MARCA_AZUL) return displayTFT.color565(65, 145, 255);
+  return ST77XX_WHITE;
+}
+byte ultimaCorConteudo() {
+  byte cor=0;
+  for(uint16_t i=0;i<tamanhoConteudo;i++){
+    byte v=(byte)conteudoArquivo[i];
+    if(v>=MARCA_VERMELHO&&v<=MARCA_BRANCO) cor=(v==MARCA_BRANCO)?0:v;
+  }
+  return cor;
+}
+uint16_t contarCaracteresVisiveis() {
+  uint16_t total=0;
+  for(uint16_t i=0;i<tamanhoConteudo;i++){
+    byte v=(byte)conteudoArquivo[i];
+    if(v<MARCA_VERMELHO||v>MARCA_BRANCO) total++;
+  }
+  return total;
+}
+bool adicionarCaractereColorido(char c) {
+  if(tamanhoConteudo>=FILE_MAX_TEXT) return false;
+  byte anterior=ultimaCorConteudo();
+  byte marcador=corTextoAtual==0?MARCA_BRANCO:corTextoAtual;
+  if(anterior!=corTextoAtual){
+    conteudoArquivo[tamanhoConteudo++]=(char)marcador;
+  }
+  if(tamanhoConteudo>=FILE_MAX_TEXT){
+    if((byte)conteudoArquivo[tamanhoConteudo-1]==marcador) tamanhoConteudo--;
+    conteudoArquivo[tamanhoConteudo]='\\0';
+    return false;
+  }
+  conteudoArquivo[tamanhoConteudo++]=c;
+  conteudoArquivo[tamanhoConteudo]='\\0';
+  return true;
+}
+void desenharTrechoColorido(uint16_t inicioVisivel,uint16_t limite,int x,int y) {
+  byte cor=0,coluna=0,linhaAtual=0;
+  uint16_t visivel=0;
+  displayTFT.setTextSize(1);
+  displayTFT.setTextWrap(false);
+  for(uint16_t i=0;i<tamanhoConteudo&&visivel<inicioVisivel+limite;i++){
+    byte v=(byte)conteudoArquivo[i];
+    if(v>=MARCA_VERMELHO&&v<=MARCA_BRANCO){cor=(v==MARCA_BRANCO)?0:v;continue;}
+    if(visivel++<inicioVisivel) continue;
+    if(v=='\\n'){coluna=0;linhaAtual++;continue;}
+    if(coluna>=18){coluna=0;linhaAtual++;}
+    if(linhaAtual>=4) break;
+    displayTFT.setTextColor(cor==0?ST77XX_WHITE:corMarcadorTFT(cor),ST77XX_BLACK);
+    displayTFT.setCursor(x+coluna*6,y+linhaAtual*17);
+    displayTFT.write((char)v);
+    coluna++;
   }
 }
 
@@ -954,23 +929,11 @@ void mostrarLeitorArquivo() {
   texto(5, 5, 2, CYAN, nomeArquivoAtual);
   linha(5, 23, 123, 23, GRAY);
 
-  uint16_t inicio = (uint16_t)paginaArquivo * 90;
-  // A tela está em rotação 3 (160x128); reserva espaço para as ações.
-  for (byte l = 0; l < 4; l++) {
-    uint16_t pos = inicio + (uint16_t)l * 18;
-    if (pos >= tamanhoConteudo) break;
-    char trecho[19];
-    byte n = 0;
-    while (n < 18 && pos + n < tamanhoConteudo) {
-      trecho[n] = conteudoArquivo[pos + n];
-      n++;
-    }
-    trecho[n] = '\0';
-    texto(5, 29 + l * 17, 1, WHITE, trecho);
-  }
-
-  byte totalPaginas = (tamanhoConteudo + 71) / 72;
-  if (totalPaginas == 0) totalPaginas = 1;
+  uint16_t totalVisivel=contarCaracteresVisiveis();
+  uint16_t inicio=(uint16_t)paginaArquivo*72;
+  desenharTrechoColorido(inicio,72,5,29);
+  byte totalPaginas=(totalVisivel+71)/72;
+  if(totalPaginas==0) totalPaginas=1;
   char paginaTexto[16];
   snprintf_P(paginaTexto, sizeof(paginaTexto), PSTR("PAG %u/%u"), paginaArquivo + 1, totalPaginas);
   texto(5, 99, 1, GRAY, paginaTexto);
@@ -1027,7 +990,7 @@ byte colunaQwertyMaisProxima(byte linhaTeclado, int centroDesejado) {
 }
 
 byte acaoQwertyMaisProxima(int centroDesejado) {
-  const int centrosAcoes[TOTAL_ACOES_TECLADO] = {17, 55, 99, 135};
+  const int centrosAcoes[TOTAL_ACOES_TECLADO] = {12, 38, 64, 90, 115};
   byte melhor = 0;
   int menorDistancia = 32767;
 
@@ -1045,14 +1008,13 @@ byte acaoQwertyMaisProxima(int centroDesejado) {
 void desenharItemTeclado(byte row, byte col, bool ativo) {
 
   if (row == TECLADO_LINHA_ACOES) {
-    const int posicoes[TOTAL_ACOES_TECLADO] = {3, 33, 79, 121};
-    const int larguras[TOTAL_ACOES_TECLADO] = {28, 44, 40, 28};
-    const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL", "ESPACO", "ENTER", "OK"};
-    int x = posicoes[col];
-    int largura = larguras[col];
-    const char *rotulo = rotulos[col];
-    retanguloArredondado(x, 113, largura, 12, 2, ativo ? CYAN : DARK);
-    textoCentro(x + largura / 2, 119, 1, ativo ? CYAN : WHITE, rotulo);
+    const int posicoes[TOTAL_ACOES_TECLADO] = {1,26,52,78,104};
+    const int larguras[TOTAL_ACOES_TECLADO] = {23,24,24,24,23};
+    const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
+    int x=posicoes[col], largura=larguras[col];
+    retanguloArredondado(x,113,largura,12,2,ativo?CYAN:DARK);
+    uint16_t cor=(col==ACAO_RGB)?corMarcadorTFT(corTextoAtual):(ativo?corTFT(CYAN):ST77XX_WHITE);
+    desenharTextoTFT(x+2,116,1,cor,rotulos[col],false);
     return;
   }
 
@@ -1073,32 +1035,15 @@ void mostrarEditorArquivo() {
 
   texto(5, 21, 1, GRAY, nomeArquivoAtual);
 
-  char trecho[19];
-  byte n = 0;
-
-  if (editandoNomeArquivo) {
-    while (n < 18 && n < tamanhoNomeTemporario) {
-      trecho[n] = nomeTemporario[n];
-      n++;
-    }
-  } else {
-    uint16_t inicio = tamanhoConteudo;
-    while (inicio > 0 && conteudoArquivo[inicio - 1] != '\n') inicio--;
-    uint16_t inicioVisivel = tamanhoConteudo > inicio + 18 ? tamanhoConteudo - 18 : inicio;
-    for (uint16_t i = inicioVisivel; i < tamanhoConteudo && n < 18; i++) {
-      if (conteudoArquivo[i] != '\n') trecho[n++] = conteudoArquivo[i];
-    }
-  }
-  trecho[n] = '\0';
-  texto(5, 34, 1, WHITE, trecho);
-
+  if(editandoNomeArquivo){
+    char trecho[19]; byte n=0;
+    while(n<18&&n<tamanhoNomeTemporario){trecho[n]=nomeTemporario[n];n++;}
+    trecho[n]='\\0'; texto(5,34,1,WHITE,trecho);
+  }else desenharPreviewConteudo();
   char contador[20];
-  if (editandoNomeArquivo) {
-    snprintf_P(contador, sizeof(contador), PSTR("%u/8 LETRAS"), tamanhoNomeTemporario);
-  } else {
-    snprintf_P(contador, sizeof(contador), PSTR("%u/%u CARACTERES"), tamanhoConteudo, FILE_MAX_TEXT);
-  }
-  texto(5, 46, 1, GRAY, contador);
+  if(editandoNomeArquivo) snprintf_P(contador,sizeof(contador),PSTR("%u/8 LETRAS"),tamanhoNomeTemporario);
+  else snprintf_P(contador,sizeof(contador),PSTR("%u/%u BYTES"),tamanhoConteudo,FILE_MAX_TEXT);
+  texto(5,46,1,YELLOW,contador);
 
   for (byte row = 0; row < TECLADO_LINHAS; row++) {
     for (byte col = 0; col < quantidadeTeclasQwerty(row); col++) {
@@ -1110,7 +1055,7 @@ void mostrarEditorArquivo() {
   }
 
   texto(4, 132, 1, GRAY, F("JOY: MOVER  SW: USAR"));
-  texto(4, 144, 1, CYAN, F("OK SALVA  DEL APAGA"));
+  texto(4, 144, 1, CYAN, F("RGB: COR  OK: SALVAR"));
   mostrarTela();
 }
 
@@ -1125,68 +1070,66 @@ bool nomeArquivoEmUso(const char *nome, byte ignorarSlot) {
 }
 
 
+
+void desenharPreviewConteudo(){
+  displayTFT.fillRect(5,32,displayTFT.width()-10,12,ST77XX_BLACK);
+  uint16_t inicio=0,visivel=0;
+  for(uint16_t i=0;i<tamanhoConteudo;i++){
+    byte v=(byte)conteudoArquivo[i];
+    if(v>=MARCA_VERMELHO&&v<=MARCA_BRANCO) continue;
+    if(v=='\\n') inicio=visivel+1;
+    visivel++;
+  }
+  uint16_t qtd=visivel-inicio;
+  uint16_t comeco=qtd>18?visivel-18:inicio;
+  desenharTrechoColorido(comeco,18,5,34);
+}
+
 // Atualiza somente a célula de pixels da nova letra no campo de pré-visualização.
 // Quando o texto ultrapassa 18 caracteres, a linha precisa rolar e é redesenhada.
-void atualizarPreviewAposDigitar(char caractere) {
-  uint16_t tamanhoAtual = editandoNomeArquivo ? tamanhoNomeTemporario : tamanhoConteudo;
-  byte tamanhoVisivel = tamanhoAtual > 18 ? 18 : (byte)tamanhoAtual;
-
-  byte escala = ajustarTamanhoFonte(1);
-  while (escala > 1 && (int)tamanhoVisivel * 6 * escala > displayTFT.width() - 10) {
-    escala--;
-  }
-
-  if (tamanhoAtual <= 18) {
-    int x = 5 + ((int)tamanhoAtual - 1) * 6 * escala;
-    char letra[2] = {caractere, '\0'};
-    desenharTextoTFT(x, 34, escala, corTFT(WHITE), letra, false);
-    return;
-  }
-
-  // A linha visível mudou de conteúdo: redesenha apenas a faixa de pré-visualização.
-  displayTFT.fillRect(5, 34, displayTFT.width() - 10, 8 * escala, ST77XX_BLACK);
-  char trecho[19];
-  byte inicio = (byte)(tamanhoAtual - 18);
-  for (byte i = 0; i < 18; i++) {
-    trecho[i] = editandoNomeArquivo ? nomeTemporario[inicio + i]
-                                    : conteudoArquivo[inicio + i];
-  }
-  trecho[18] = '\0';
-  desenharTextoTFT(5, 34, escala, corTFT(WHITE), trecho, false);
+void atualizarPreviewAposDigitar(char caractere){
+  if(editandoNomeArquivo){
+    displayTFT.fillRect(5,32,displayTFT.width()-10,12,ST77XX_BLACK);
+    byte inicio=tamanhoNomeTemporario>18?tamanhoNomeTemporario-18:0;
+    char trecho[19]; byte n=0;
+    for(byte i=inicio;i<tamanhoNomeTemporario&&n<18;i++) trecho[n++]=nomeTemporario[i];
+    trecho[n]='\\0'; texto(5,34,1,WHITE,trecho);
+  }else desenharPreviewConteudo();
+  displayTFT.fillRect(4,45,displayTFT.width()-8,10,ST77XX_BLACK);
+  char contador[20];
+  snprintf_P(contador,sizeof(contador),PSTR("%u/%u BYTES"),tamanhoConteudo,FILE_MAX_TEXT);
+  texto(5,46,1,YELLOW,contador);
 }
 
 void selecionarTeclaEditor() {
   if (tecladoLinha == TECLADO_LINHA_ACOES) {
-    if (tecladoColuna == ACAO_DEL) {
-      if (editandoNomeArquivo) {
-        if (tamanhoNomeTemporario > 0) {
-          nomeTemporario[--tamanhoNomeTemporario] = '\0';
-        }
-      } else if (tamanhoConteudo > 0) {
+    if(tecladoColuna==ACAO_DEL){
+      if(editandoNomeArquivo){if(tamanhoNomeTemporario>0)nomeTemporario[--tamanhoNomeTemporario]='\\0';}
+      else if(tamanhoConteudo>0){
         tamanhoConteudo--;
-        conteudoArquivo[tamanhoConteudo] = '\0';
+        byte removido=(byte)conteudoArquivo[tamanhoConteudo];
+        if(removido<MARCA_VERMELHO||removido>MARCA_BRANCO){
+          if(tamanhoConteudo>0){
+            byte ant=(byte)conteudoArquivo[tamanhoConteudo-1];
+            if(ant>=MARCA_VERMELHO&&ant<=MARCA_BRANCO)tamanhoConteudo--;
+          }
+        }
+        conteudoArquivo[tamanhoConteudo]='\\0';
+        corTextoAtual=ultimaCorConteudo();
       }
-
-      mostrarEditorArquivo();
+      mostrarEditorArquivo(); return;
+    }
+    if(tecladoColuna==ACAO_ESPACO||tecladoColuna==ACAO_ENTER){
+      if(!editandoNomeArquivo){
+        char c=tecladoColuna==ACAO_ESPACO?' ':'\\n';
+        adicionarCaractereColorido(c);
+        atualizarPreviewAposDigitar(c);
+      }
       return;
     }
-
-    if (tecladoColuna == ACAO_ESPACO) {
-      if (!editandoNomeArquivo && tamanhoConteudo < FILE_MAX_TEXT) {
-        conteudoArquivo[tamanhoConteudo++] = ' ';
-        conteudoArquivo[tamanhoConteudo] = '\0';
-      }
-
-      mostrarEditorArquivo();
-      return;
-    }
-
-    if (tecladoColuna == ACAO_ENTER) {
-      if (!editandoNomeArquivo && tamanhoConteudo < FILE_MAX_TEXT) {
-        conteudoArquivo[tamanhoConteudo++] = '\n';
-        conteudoArquivo[tamanhoConteudo] = '\0';
-      }
-      mostrarEditorArquivo();
+    if(tecladoColuna==ACAO_RGB){
+      corTextoAtual=(corTextoAtual+1)%4;
+      desenharItemTeclado(TECLADO_LINHA_ACOES,ACAO_RGB,true);
       return;
     }
 
@@ -1249,10 +1192,8 @@ void selecionarTeclaEditor() {
       nomeTemporario[tamanhoNomeTemporario] = '\0';
       adicionou = true;
     }
-  } else if (tamanhoConteudo < FILE_MAX_TEXT) {
-    conteudoArquivo[tamanhoConteudo++] = tecla;
-    conteudoArquivo[tamanhoConteudo] = '\0';
-    adicionou = true;
+  } else {
+    adicionou = adicionarCaractereColorido(tecla);
   }
 
   if (adicionou) {
@@ -1264,6 +1205,7 @@ void selecionarTeclaEditor() {
 void executarAcaoLeitor() {
   if (acaoArquivo == 0) {
     editandoNomeArquivo = false;
+    corTextoAtual = ultimaCorConteudo();
     tecladoColuna = 0;
     tecladoLinha = 0;
     mostrarEditorArquivo();
@@ -1334,7 +1276,7 @@ void atualizarNavegacao() {
       }
 
       if (dy < 0) {
-        const int centrosAcoes[TOTAL_ACOES_TECLADO] = {17, 55, 99, 135};
+        const int centrosAcoes[TOTAL_ACOES_TECLADO] = {12, 38, 64, 90, 115};
         int centroAtual = centrosAcoes[tecladoColuna];
         tecladoLinha = 3;
         tecladoColuna = colunaQwertyMaisProxima(3, centroAtual);
