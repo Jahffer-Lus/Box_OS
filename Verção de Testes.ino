@@ -1064,10 +1064,20 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
     const int posicoes[TOTAL_ACOES_TECLADO] = {1,26,52,78,104};
     const int larguras[TOTAL_ACOES_TECLADO] = {23,24,24,24,23};
     const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
-    int x=posicoes[col], largura=larguras[col];
-    // A camada/fundo da tecla fica vermelha quando selecionada; texto permanece preto.
-    retanguloArredondado(x,113,largura,12,2,ativo ? F("#FF3030") : F("#258BFF"));
-    desenharTextoTFT(x+2,116,1,ST77XX_BLACK,rotulos[col],false);
+    int x = posicoes[col], largura = larguras[col];
+
+    // Teclas de acao vazadas, iguais as teclas de caracteres.
+    // O contorno fica azul normalmente e acompanha a cor de texto ao selecionar.
+    uint16_t corContorno = displayTFT.color565(37, 139, 255);
+    if (ativo) {
+      if (corTextoAtual == MARCA_VERMELHO || corTextoAtual == MARCA_VERDE)
+        corContorno = corMarcadorTFT(corTextoAtual);
+      else
+        corContorno = ST77XX_WHITE;
+    }
+    displayTFT.drawRoundRect(x, 113, largura, 12, 2, corContorno);
+    desenharTextoTFT(x + (largura - (strlen(rotulos[col]) * 6)) / 2, 116, 1,
+                     ST77XX_WHITE, rotulos[col], false);
     return;
   }
 
