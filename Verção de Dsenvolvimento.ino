@@ -12,7 +12,7 @@
 #define JOY_SW 7
 #define BUZZER_PIN 6
 
-#define TFT_CS 13
+#define TFT_CS 8
 #define TFT_DC 11
 #define TFT_RST 12
 #define TFT_MOSI 10
