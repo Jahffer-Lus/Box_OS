@@ -185,43 +185,48 @@ void carregarConfiguracoes() {
 }
 
 
+// Buzzer ATIVO: nao reproduz frequencias; usa apenas pulsos HIGH/LOW.
+void bipAtivo(unsigned int duracao) {
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(duracao);
+  digitalWrite(BUZZER_PIN, LOW);
+}
+
 void somClique() {
-  tone(BUZZER_PIN, 1450, 35);
+  bipAtivo(35);
 }
 
 void somNavegacao() {
-  tone(BUZZER_PIN, 1050, 22);
+  bipAtivo(22);
 }
 
 void somSucesso() {
-  tone(BUZZER_PIN, 880, 75);
+  bipAtivo(75);
   delay(85);
-  tone(BUZZER_PIN, 1320, 95);
-  delay(100);
-  noTone(BUZZER_PIN);
+  bipAtivo(95);
 }
 
 void somErro() {
-  tone(BUZZER_PIN, 230, 180);
-  delay(190);
-  noTone(BUZZER_PIN);
+  bipAtivo(180);
+  delay(70);
+  bipAtivo(180);
 }
 
 void somApagar() {
-  tone(BUZZER_PIN, 700, 65);
+  bipAtivo(65);
   delay(75);
-  tone(BUZZER_PIN, 420, 100);
-  delay(105);
-  noTone(BUZZER_PIN);
+  bipAtivo(100);
 }
 
 void somInicializacao() {
-  const unsigned int notas[] = {523, 659, 784, 1047};
-  for (byte i = 0; i < 4; i++) {
-    tone(BUZZER_PIN, notas[i], 85);
-    delay(105);
-  }
-  noTone(BUZZER_PIN);
+  // Sequencia de pulsos: buzzer ativo nao permite variar o tom.
+  bipAtivo(65);
+  delay(45);
+  bipAtivo(65);
+  delay(45);
+  bipAtivo(65);
+  delay(45);
+  bipAtivo(150);
 }
 
 byte ajustarTamanhoFonte(byte tamanhoBase) {
@@ -1431,7 +1436,7 @@ void setup() {
   pinMode(JOY_Y, INPUT);
   pinMode(JOY_SW, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
-  noTone(BUZZER_PIN);
+  digitalWrite(BUZZER_PIN, LOW);
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
   displayTFT.initR(INITR_BLACKTAB);
