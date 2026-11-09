@@ -1048,6 +1048,15 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   textoCentro(x + 5, y + 2, 1, corLetra, etiqueta);
 }
 
+void redesenharTeclasCaracteres() {
+  // Alterna letras/simbolos redesenhando somente a area das teclas.
+  for (byte row = 0; row < TECLADO_LINHAS; row++) {
+    for (byte col = 0; col < quantidadeTeclasQwerty(row); col++) {
+      desenharItemTeclado(row, col, (tecladoLinha == row && tecladoColuna == col));
+    }
+  }
+}
+
 void mostrarEditorArquivo() {
   tela = FILE_EDIT;
   limpar();
@@ -1125,7 +1134,8 @@ void selecionarTeclaEditor() {
   if (tecladoLinha == 2 && tecladoColuna == 0) {
     tecladoSimbolos = !tecladoSimbolos;
     somNavegacao();
-    mostrarEditorArquivo();
+    // Mantem documento, contador e botoes intactos; atualiza apenas as teclas.
+    redesenharTeclasCaracteres();
     return;
   }
 
