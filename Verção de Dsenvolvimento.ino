@@ -122,9 +122,9 @@ const char TECLADO_QWERTY[4][11] PROGMEM = {
 };
 
 const char TECLADO_SIMBOLOS[4][11] PROGMEM = {
-  "!@#$%^&*(",
+  "!@#$%^&*()",
   "?,.:;~+-=",
-  "[]{}<>",
+  "[]{}<>/",
   "1234567890"
 };
 
