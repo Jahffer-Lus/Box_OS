@@ -106,6 +106,7 @@ byte corTextoAtual = 0;
 byte tecladoColuna = 0;
 byte tecladoLinha = 0;
 bool editandoNomeArquivo = false;
+bool tecladoSimbolos = false;
 char nomeTemporario[9];
 byte tamanhoNomeTemporario = 0;
 
@@ -117,6 +118,13 @@ const char TECLADO_QWERTY[4][11] PROGMEM = {
   "QWERTYUIOP",
   "ASDFGHJKL",
   "ZXCVBNM",
+  "1234567890"
+};
+
+const char TECLADO_SIMBOLOS[4][11] PROGMEM = {
+  "!@#$%^&*(",
+  "?,.:;~+-=",
+  "[]{}<>",
   "1234567890"
 };
 
@@ -946,7 +954,7 @@ byte quantidadeTeclasQwerty(byte linhaTeclado) {
   switch (linhaTeclado) {
     case 0: return 10;
     case 1: return 9;
-    case 2: return 7;
+    case 2: return 8;
     case 3: return 10;
     default: return 0;
   }
@@ -954,7 +962,7 @@ byte quantidadeTeclasQwerty(byte linhaTeclado) {
 
 int inicioLinhaQwerty(byte linhaTeclado) {
   if (linhaTeclado == 1) return 11;
-  if (linhaTeclado == 2) return 23;
+  if (linhaTeclado == 2) return 11;
   return 5;
 }
 
@@ -965,7 +973,10 @@ int centroTeclaQwerty(byte linhaTeclado, byte coluna) {
 char lerTeclaQwerty(byte linhaTeclado, byte coluna) {
   if (linhaTeclado >= TECLADO_LINHAS) return 0;
   if (coluna >= quantidadeTeclasQwerty(linhaTeclado)) return 0;
-  return (char)pgm_read_byte(&TECLADO_QWERTY[linhaTeclado][coluna]);
+  if (linhaTeclado == 2 && coluna == 0) return 0; // Tecla de alternancia ABC/SIMBOLOS.
+  byte indice = (linhaTeclado == 2) ? coluna - 1 : coluna;
+  if (tecladoSimbolos) return (char)pgm_read_byte(&TECLADO_SIMBOLOS[linhaTeclado][indice]);
+  return (char)pgm_read_byte(&TECLADO_QWERTY[linhaTeclado][indice]);
 }
 
 byte colunaQwertyMaisProxima(byte linhaTeclado, int centroDesejado) {
@@ -1017,6 +1028,10 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
   retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
+  if (row == 2 && col == 0) {
+    textoCentro(x + 5, y + 2, 1, ativo ? CYAN : WHITE, tecladoSimbolos ? F("A") : F("?"));
+    return;
+  }
   char etiqueta[2] = { lerTeclaQwerty(row, col), '\0' };
   textoCentro(x + 5, y + 2, 1, ativo ? CYAN : WHITE, etiqueta);
 }
@@ -1095,6 +1110,13 @@ void atualizarPreviewAposDigitar(char caractere){
 }
 
 void selecionarTeclaEditor() {
+  if (tecladoLinha == 2 && tecladoColuna == 0) {
+    tecladoSimbolos = !tecladoSimbolos;
+    somNavegacao();
+    mostrarEditorArquivo();
+    return;
+  }
+
   if (tecladoLinha == TECLADO_LINHA_ACOES) {
     if(tecladoColuna==ACAO_DEL){
       if(editandoNomeArquivo){if(tamanhoNomeTemporario>0)nomeTemporario[--tamanhoNomeTemporario]='\0';}
