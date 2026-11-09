@@ -28,7 +28,7 @@ Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define RED F("#F04B4B")
 
 const byte TOTAL_APPS = 2;
-const byte TOTAL_CONFIG = 5;
+const byte TOTAL_CONFIG = 6;
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
@@ -41,8 +41,9 @@ const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
   switch (indice) {
     case 0: return F("Tamanho da Fonte");
     case 1: return F("Rotacao da Tela");
-    case 2: return F("Desligar");
-    case 3: return F("Reiniciar");
+    case 2: return F("Velocidade da Selecao");
+    case 3: return F("Desligar");
+    case 4: return F("Reiniciar");
     default: return F("Voltar");
   }
 }
@@ -53,6 +54,7 @@ enum Screen {
   CONFIG,
   AJUSTAR_FONTE,
   AJUSTAR_ROTACAO,
+  AJUSTAR_VELOCIDADE,
   FILE_LIST,
   FILE_VIEW,
   FILE_EDIT
@@ -65,6 +67,7 @@ byte configSelecionada = 0;
 
 byte tamanhoFonte = 1;
 byte rotacaoTela = 3;
+byte velocidadeSelecao = 1; // 0=lenta, 1=normal, 2=rapida.
 byte configPrimeira = 0;
 
 const int CONFIG_EEPROM_BASE = 1008;
@@ -168,11 +171,12 @@ void mostrarTela() {
 
 void salvarConfiguracoes() {
   EEPROM.update(CONFIG_EEPROM_BASE, CONFIG_MAGIC);
-  EEPROM.update(CONFIG_EEPROM_BASE + 1, 3);
+  EEPROM.update(CONFIG_EEPROM_BASE + 1, 4);
   EEPROM.update(CONFIG_EEPROM_BASE + 2, tamanhoFonte);
   EEPROM.update(CONFIG_EEPROM_BASE + 3, rotacaoTela);
-  EEPROM.update(CONFIG_EEPROM_BASE + 4,
-    (byte)(CONFIG_MAGIC ^ tamanhoFonte ^ rotacaoTela ^ 3));
+  EEPROM.update(CONFIG_EEPROM_BASE + 4, velocidadeSelecao);
+  EEPROM.update(CONFIG_EEPROM_BASE + 5,
+    (byte)(CONFIG_MAGIC ^ tamanhoFonte ^ rotacaoTela ^ velocidadeSelecao ^ 4));
 }
 
 void carregarConfiguracoes() {
@@ -181,12 +185,22 @@ void carregarConfiguracoes() {
   byte fonte = EEPROM.read(CONFIG_EEPROM_BASE + 2);
   byte valorAntigo = EEPROM.read(CONFIG_EEPROM_BASE + 3);
   byte checksum = EEPROM.read(CONFIG_EEPROM_BASE + 4);
+  byte velocidade = EEPROM.read(CONFIG_EEPROM_BASE + 4);
+  byte checksumV4 = EEPROM.read(CONFIG_EEPROM_BASE + 5);
 
-  if (assinatura == CONFIG_MAGIC && versao == 3 &&
+  if (assinatura == CONFIG_MAGIC && versao == 4 &&
+      fonte >= 1 && fonte <= 4 && valorAntigo <= 3 && velocidade <= 2 &&
+      checksumV4 == (byte)(CONFIG_MAGIC ^ fonte ^ valorAntigo ^ velocidade ^ 4)) {
+    tamanhoFonte = fonte;
+    rotacaoTela = valorAntigo;
+    velocidadeSelecao = velocidade;
+  } else if (assinatura == CONFIG_MAGIC && versao == 3 &&
       fonte >= 1 && fonte <= 4 && valorAntigo <= 3 &&
       checksum == (byte)(CONFIG_MAGIC ^ fonte ^ valorAntigo ^ 3)) {
     tamanhoFonte = fonte;
     rotacaoTela = valorAntigo;
+    velocidadeSelecao = 1;
+    salvarConfiguracoes();
   } else if (assinatura == CONFIG_MAGIC && versao == 2 &&
              fonte >= 1 && fonte <= 4 && valorAntigo >= 1 &&
              valorAntigo <= 4 &&
@@ -194,10 +208,12 @@ void carregarConfiguracoes() {
     // Mantem a fonte das versoes anteriores e preserva a orientacao atual.
     tamanhoFonte = fonte;
     rotacaoTela = 3;
+    velocidadeSelecao = 1;
     salvarConfiguracoes();
   } else {
     tamanhoFonte = 1;
     rotacaoTela = 3;
+    velocidadeSelecao = 1;
     salvarConfiguracoes();
   }
 }
@@ -506,6 +522,24 @@ void mostrarConfig() {
     byte item = configPrimeira + linhaMenu;
     if (item >= TOTAL_CONFIG) break;
     desenharItemConfig(item);
+  }
+  mostrarTela();
+}
+
+void mostrarAjusteVelocidade() {
+  tela = AJUSTAR_VELOCIDADE;
+  limpar();
+
+  texto(5, 5, 2, CYAN, F("VELOCIDADE")); 
+  linha(5, 23, 123, 23, GRAY);
+  const __FlashStringHelper *opcoes[3] = { F("LENTA"), F("NORMAL"), F("RAPIDA") };
+  for (byte i = 0; i < 3; i++) {
+    int y = 42 + i * 22;
+    if (i == velocidadeSelecao) {
+      linha(4, y - 4, 124, y - 4, CYAN);
+      linha(4, y + 14, 124, y + 14, CYAN);
+    }
+    texto(9, y, 2, i == velocidadeSelecao ? CYAN : WHITE, opcoes[i]);
   }
   mostrarTela();
 }
@@ -1288,14 +1322,16 @@ void selecionarConfig() {
   switch (configSelecionada) {
     case 0: mostrarAjusteFonte(); break;
     case 1: mostrarAjusteRotacao(); break;
-    case 2: desligarBOX(); break;
-    case 3: reiniciarBOX(); break;
+    case 2: mostrarAjusteVelocidade(); break;
+    case 3: desligarBOX(); break;
+    case 4: reiniciarBOX(); break;
     default: mostrarMenu(); break;
   }
 }
 
 void atualizarNavegacao() {
-  if (millis() - ultimoMovimento < 110) return;
+  const unsigned int intervalosSelecao[3] = { 260, 110, 45 };
+  if (millis() - ultimoMovimento < intervalosSelecao[velocidadeSelecao]) return;
 
   if (tela == FILE_EDIT) {
     int dx = lerDirecaoX();
@@ -1402,7 +1438,7 @@ void atualizarNavegacao() {
   }
 
   int direcao;
-  if (tela == AJUSTAR_FONTE || tela == AJUSTAR_ROTACAO) {
+  if (tela == AJUSTAR_FONTE || tela == AJUSTAR_ROTACAO || tela == AJUSTAR_VELOCIDADE) {
     direcao = lerDirecaoX();
     if (direcao == 0) return;
   } else {
@@ -1443,6 +1479,12 @@ void atualizarNavegacao() {
     salvarConfiguracoes();
     mostrarAjusteRotacao();
   }
+  else if (tela == AJUSTAR_VELOCIDADE) {
+    if (direcao < 0 && velocidadeSelecao > 0) velocidadeSelecao--;
+    if (direcao > 0 && velocidadeSelecao < 2) velocidadeSelecao++;
+    salvarConfiguracoes();
+    mostrarAjusteVelocidade();
+  }
 }
 
 void atualizarBotao() {
@@ -1457,6 +1499,7 @@ void atualizarBotao() {
       break;
     case AJUSTAR_FONTE:
     case AJUSTAR_ROTACAO:
+    case AJUSTAR_VELOCIDADE:
       mostrarConfig();
       break;
     case FILE_LIST:
