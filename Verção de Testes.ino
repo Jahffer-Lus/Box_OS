@@ -353,6 +353,187 @@ void textoCentro(int x, int y, int tamanho, const __FlashStringHelper *cor, cons
   desenharTextoFlashTFT(x, y, tamanho, corTFT(cor), mensagem, true);
 }
 
+
+// ================= RELÓGIO DS1302 =================
+// DS1302: CE/RST=D5, DAT/I/O=D3, CLK/SCLK=D4
+#define RTC_DAT 3
+#define RTC_CLK 4
+#define RTC_CE  5
+
+byte rtcUltimoSegundo = 255;
+byte rtcUltimoMinuto = 255;
+byte rtcUltimaHora = 255;
+byte rtcUltimoDia = 255;
+byte rtcUltimoMes = 255;
+byte rtcUltimoAno = 255;
+bool rtcDisponivel = false;
+
+byte rtcBCD(byte valor) {
+  return ((valor >> 4) * 10) + (valor & 0x0F);
+}
+
+byte rtcParaBCD(byte valor) {
+  return ((valor / 10) << 4) | (valor % 10);
+}
+
+void rtcIniciarTransacao() {
+  digitalWrite(RTC_CE, LOW);
+  digitalWrite(RTC_CLK, LOW);
+  pinMode(RTC_DAT, OUTPUT);
+  digitalWrite(RTC_CE, HIGH);
+}
+
+void rtcFinalizarTransacao() {
+  digitalWrite(RTC_CE, LOW);
+  pinMode(RTC_DAT, INPUT);
+}
+
+void rtcEnviarByte(byte valor) {
+  for (byte i = 0; i < 8; i++) {
+    digitalWrite(RTC_DAT, (valor >> i) & 1);
+    digitalWrite(RTC_CLK, HIGH);
+    digitalWrite(RTC_CLK, LOW);
+  }
+}
+
+byte rtcLerByte() {
+  byte valor = 0;
+  pinMode(RTC_DAT, INPUT);
+  for (byte i = 0; i < 8; i++) {
+    if (digitalRead(RTC_DAT)) valor |= (1 << i);
+    digitalWrite(RTC_CLK, HIGH);
+    digitalWrite(RTC_CLK, LOW);
+  }
+  return valor;
+}
+
+byte rtcLerRegistrador(byte endereco) {
+  rtcIniciarTransacao();
+  rtcEnviarByte(endereco | 0x01);
+  byte valor = rtcLerByte();
+  rtcFinalizarTransacao();
+  return valor;
+}
+
+void rtcEscreverRegistrador(byte endereco, byte valor) {
+  rtcIniciarTransacao();
+  rtcEnviarByte(endereco & 0xFE);
+  rtcEnviarByte(valor);
+  rtcFinalizarTransacao();
+}
+
+void rtcDesproteger() {
+  rtcEscreverRegistrador(0x8E, 0x00); // desativa proteção de escrita
+}
+
+void rtcDefinirHoraCompilacao() {
+  // Usado somente se o oscilador estiver parado (bit CH ligado).
+  const char meses[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+  byte mes = 1;
+  for (byte i = 0; i < 12; i++) {
+    if (strncmp(__DATE__ , meses + i * 3, 3) == 0) {
+      mes = i + 1;
+      break;
+    }
+  }
+  byte dia = (byte)atoi(__DATE__ + 4);
+  byte ano = (byte)(atoi(__DATE__ + 7) % 100);
+  byte hora = (byte)atoi(__TIME__);
+  byte minuto = (byte)atoi(__TIME__ + 3);
+  byte segundo = (byte)atoi(__TIME__ + 6);
+
+  rtcDesproteger();
+  rtcEscreverRegistrador(0x80, rtcParaBCD(segundo)); // segundos, CH=0
+  rtcEscreverRegistrador(0x82, rtcParaBCD(minuto));
+  rtcEscreverRegistrador(0x84, rtcParaBCD(hora)); // formato 24 h
+  rtcEscreverRegistrador(0x86, rtcParaBCD(dia));
+  rtcEscreverRegistrador(0x88, rtcParaBCD(mes));
+  rtcEscreverRegistrador(0x8A, rtcParaBCD(1)); // dia da semana
+  rtcEscreverRegistrador(0x8C, rtcParaBCD(ano));
+  rtcEscreverRegistrador(0x8E, 0x00);
+}
+
+bool rtcLerDataHora(byte &seg, byte &minu, byte &hora,
+                    byte &dia, byte &mes, byte &ano) {
+  byte s = rtcLerRegistrador(0x81);
+  if (s & 0x80) return false; // oscilador parado
+  seg = rtcBCD(s & 0x7F);
+  minu = rtcBCD(rtcLerRegistrador(0x83) & 0x7F);
+  byte h = rtcLerRegistrador(0x85);
+  if (h & 0x80) { // modo 12 horas: converte para 24 h
+    byte h12 = rtcBCD(h & 0x1F);
+    bool pm = h & 0x20;
+    hora = (h12 % 12) + (pm ? 12 : 0);
+  } else {
+    hora = rtcBCD(h & 0x3F);
+  }
+  dia = rtcBCD(rtcLerRegistrador(0x87) & 0x3F);
+  mes = rtcBCD(rtcLerRegistrador(0x89) & 0x1F);
+  ano = rtcBCD(rtcLerRegistrador(0x8D));
+  return (seg < 60 && minu < 60 && hora < 24 &&
+          dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12);
+}
+
+void rtcDesenharDigito(int x, int y, char digito) {
+  displayTFT.fillRect(x, y, 6, 8, ST77XX_BLACK);
+  displayTFT.setTextSize(1);
+  displayTFT.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+  displayTFT.setCursor(x, y);
+  displayTFT.write(digito);
+}
+
+void rtcDesenharNumero(int x, int y, byte valor, byte quantidade) {
+  char buffer[4];
+  if (quantidade == 2) snprintf(buffer, sizeof(buffer), "%02u", valor);
+  else snprintf(buffer, sizeof(buffer), "%04u", valor);
+  for (byte i = 0; i < quantidade; i++) {
+    rtcDesenharDigito(x + i * 6, y, buffer[i]);
+  }
+}
+
+void rtcDesenharSeparadores() {
+  // Separadores fixos: nunca são redesenhados durante a contagem.
+  displayTFT.setTextSize(1);
+  displayTFT.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+  displayTFT.setCursor(17, 21); displayTFT.print('/');
+  displayTFT.setCursor(35, 21); displayTFT.print('/');
+  displayTFT.setCursor(17, 30); displayTFT.print(':');
+  displayTFT.setCursor(35, 30); displayTFT.print(':');
+}
+
+void atualizarRelogioMenu() {
+  if (tela != MENU) return;
+
+  byte seg, minu, hora, dia, mes, ano;
+  if (!rtcLerDataHora(seg, minu, hora, dia, mes, ano)) return;
+
+  // Só redesenha os algarismos quando o valor correspondente muda.
+  if (dia != rtcUltimoDia) {
+    rtcDesenharNumero(5, 21, dia, 2);
+    rtcUltimoDia = dia;
+  }
+  if (mes != rtcUltimoMes) {
+    rtcDesenharNumero(23, 21, mes, 2);
+    rtcUltimoMes = mes;
+  }
+  if (ano != rtcUltimoAno) {
+    rtcDesenharNumero(41, 21, 2000 + ano, 4);
+    rtcUltimoAno = ano;
+  }
+  if (hora != rtcUltimaHora) {
+    rtcDesenharNumero(5, 30, hora, 2);
+    rtcUltimaHora = hora;
+  }
+  if (minu != rtcUltimoMinuto) {
+    rtcDesenharNumero(23, 30, minu, 2);
+    rtcUltimoMinuto = minu;
+  }
+  if (seg != rtcUltimoSegundo) {
+    rtcDesenharNumero(41, 30, seg, 2);
+    rtcUltimoSegundo = seg;
+  }
+}
+
 int lerDirecaoX() {
   int x = analogRead(JOY_X) - centroX;
   if (x < -LIMITE_JOYSTICK) return -1;
@@ -484,6 +665,10 @@ void mostrarMenu() {
   limpar();
 
   texto(5, 3, 3, CYAN, F("APLICATIVOS"));
+  rtcUltimoSegundo = rtcUltimoMinuto = rtcUltimaHora = 255;
+  rtcUltimoDia = rtcUltimoMes = rtcUltimoAno = 255;
+  rtcDesenharSeparadores();
+  atualizarRelogioMenu();
   linha(5, 38, 123, 38, GRAY);
 
   for (byte i = 0; i < TOTAL_APPS; i++) {
@@ -1548,6 +1733,13 @@ void setup() {
   pinMode(BOTAO_EXTRA, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
+  pinMode(RTC_CE, OUTPUT);
+  pinMode(RTC_CLK, OUTPUT);
+  pinMode(RTC_DAT, INPUT);
+  digitalWrite(RTC_CE, LOW);
+  digitalWrite(RTC_CLK, LOW);
+  rtcDesproteger();
+  if (rtcLerRegistrador(0x81) & 0x80) rtcDefinirHoraCompilacao();
   pinMode(TFT_CS, OUTPUT);
   digitalWrite(TFT_CS, HIGH);
   displayTFT.initR(INITR_BLACKTAB);
@@ -1567,4 +1759,5 @@ void loop() {
   if (!iniciado) return;
   atualizarNavegacao();
   atualizarBotao();
+  atualizarRelogioMenu();
 }
