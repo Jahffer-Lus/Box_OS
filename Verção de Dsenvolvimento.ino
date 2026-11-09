@@ -1015,7 +1015,7 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
 
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
-  int y = 52 + row * 13; // Teclas 3 px mais acima.
+  int y = 49 + row * 13; // Teclas mais 3 px acima.
   retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
   char etiqueta[2] = { lerTeclaQwerty(row, col), '\0' };
   textoCentro(x + 5, y + 6, 1, ativo ? CYAN : WHITE, etiqueta);
