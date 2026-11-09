@@ -112,6 +112,7 @@ byte tamanhoNomeTemporario = 0;
 
 void mostrarListaArquivos();
 void atualizarBarraLeitorArquivo() {
+  // Atualiza somente a faixa inferior de opcoes, sem limpar/redesenhar o documento.
   displayTFT.fillRect(4, 104, 124, 24, ST77XX_BLACK);
   const __FlashStringHelper *acao = F("VOLTAR");
   if (acaoArquivo == 0) acao = F("EDITAR");
@@ -1027,8 +1028,8 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
     const int larguras[TOTAL_ACOES_TECLADO] = {23,24,24,24,23};
     const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
     int x=posicoes[col], largura=larguras[col];
-    retanguloArredondado(x,113,largura,12,2,CYAN);
-    uint16_t cor=ST77XX_BLACK;
+    retanguloArredondado(x,113,largura,12,2,F("#258BFF"));
+    uint16_t cor = ativo ? displayTFT.color565(255, 45, 45) : ST77XX_BLACK;
     desenharTextoTFT(x+2,116,1,cor,rotulos[col],false);
     return;
   }
@@ -1036,13 +1037,15 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
-  retanguloArredondado(x, y, 10, 11, 2, CYAN);
+  // Fundo azul; somente a letra da tecla selecionada fica vermelha.
+  retanguloArredondado(x, y, 10, 11, 2, F("#258BFF"));
+  const __FlashStringHelper *corLetra = ativo ? F("#FF3030") : F("#000000");
   if (row == 2 && col == 0) {
-    textoCentro(x + 5, y + 2, 1, F("#000000"), tecladoSimbolos ? F("A") : F("?"));
+    textoCentro(x + 5, y + 2, 1, corLetra, tecladoSimbolos ? F("A") : F("?"));
     return;
   }
   char etiqueta[2] = { lerTeclaQwerty(row, col), '\0' };
-  textoCentro(x + 5, y + 2, 1, F("#000000"), etiqueta);
+  textoCentro(x + 5, y + 2, 1, corLetra, etiqueta);
 }
 
 void mostrarEditorArquivo() {
