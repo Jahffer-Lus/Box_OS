@@ -111,6 +111,15 @@ char nomeTemporario[9];
 byte tamanhoNomeTemporario = 0;
 
 void mostrarListaArquivos();
+void atualizarBarraLeitorArquivo() {
+  displayTFT.fillRect(4, 104, 124, 24, ST77XX_BLACK);
+  const __FlashStringHelper *acao = F("VOLTAR");
+  if (acaoArquivo == 0) acao = F("EDITAR");
+  else if (acaoArquivo == 1) acao = F("RENOMEAR");
+  else if (acaoArquivo == 2) acao = F("APAGAR");
+  texto(5, 108, 1, CYAN, acao);
+}
+
 void mostrarLeitorArquivo();
 void mostrarEditorArquivo();
 void mostrarConfig();
@@ -1018,8 +1027,8 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
     const int larguras[TOTAL_ACOES_TECLADO] = {23,24,24,24,23};
     const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
     int x=posicoes[col], largura=larguras[col];
-    retanguloArredondado(x,113,largura,12,2,ativo?CYAN:DARK);
-    uint16_t cor=(col==ACAO_RGB)?corMarcadorTFT(corTextoAtual):(ativo?corTFT(CYAN):ST77XX_WHITE);
+    retanguloArredondado(x,113,largura,12,2,CYAN);
+    uint16_t cor=ST77XX_BLACK;
     desenharTextoTFT(x+2,116,1,cor,rotulos[col],false);
     return;
   }
@@ -1027,13 +1036,13 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
-  retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
+  retanguloArredondado(x, y, 10, 11, 2, CYAN);
   if (row == 2 && col == 0) {
-    textoCentro(x + 5, y + 2, 1, ativo ? CYAN : WHITE, tecladoSimbolos ? F("A") : F("?"));
+    textoCentro(x + 5, y + 2, 1, F("#000000"), tecladoSimbolos ? F("A") : F("?"));
     return;
   }
   char etiqueta[2] = { lerTeclaQwerty(row, col), '\0' };
-  textoCentro(x + 5, y + 2, 1, ativo ? CYAN : WHITE, etiqueta);
+  textoCentro(x + 5, y + 2, 1, F("#000000"), etiqueta);
 }
 
 void mostrarEditorArquivo() {
@@ -1365,17 +1374,17 @@ void atualizarNavegacao() {
     int dx = lerDirecaoX();
     int dy = lerDirecaoY();
     if (dx == 0 && dy == 0) return;
-    if (dx != 0) {
-      acaoArquivo = (acaoArquivo + 4 + dx) % 4;
-    }
-    if (dy < 0 && paginaArquivo > 0) paginaArquivo--;
+    bool paginaMudou = false;
+    if (dx != 0) acaoArquivo = (acaoArquivo + 4 + dx) % 4;
+    if (dy < 0 && paginaArquivo > 0) { paginaArquivo--; paginaMudou = true; }
     if (dy > 0) {
       byte totalPaginas = (contarCaracteresVisiveis() + 71) / 72;
       if (totalPaginas == 0) totalPaginas = 1;
-      if (paginaArquivo + 1 < totalPaginas) paginaArquivo++;
+      if (paginaArquivo + 1 < totalPaginas) { paginaArquivo++; paginaMudou = true; }
     }
     ultimoMovimento = millis();
-    mostrarLeitorArquivo();
+    if (paginaMudou) mostrarLeitorArquivo();
+    else if (dx != 0) atualizarBarraLeitorArquivo();
     return;
   }
 
