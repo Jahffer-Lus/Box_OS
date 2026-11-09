@@ -10,6 +10,7 @@
 #define JOY_X A0
 #define JOY_Y A1
 #define JOY_SW 7
+#define BOTAO_EXTRA 13
 #define BUZZER_PIN 6
 
 #define TFT_CS 8
@@ -397,9 +398,11 @@ int lerDirecao() {
 }
 
 bool botaoPressionado() {
-  bool estado = digitalRead(JOY_SW);
+  // O botão extra no D13 funciona em paralelo com o SW do joystick.
+  // Ambos usam INPUT_PULLUP: pressionado = LOW.
+  bool estado = (digitalRead(JOY_SW) == LOW || digitalRead(BOTAO_EXTRA) == LOW);
 
-  if (estado == LOW && ultimoEstadoBotao == HIGH &&
+  if (estado && ultimoEstadoBotao == HIGH &&
       millis() - ultimoBotao > 250) {
     ultimoEstadoBotao = LOW;
     ultimoBotao = millis();
@@ -407,7 +410,7 @@ bool botaoPressionado() {
     return true;
   }
 
-  if (estado == HIGH) {
+  if (!estado) {
     ultimoEstadoBotao = HIGH;
   }
 
@@ -1071,8 +1074,17 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
-  // A camada/fundo azul fica vermelha quando selecionada; a letra continua preta.
-  retanguloArredondado(x, y, 10, 11, 2, ativo ? F("#FF3030") : F("#258BFF"));
+  // Teclas ficam vazadas, somente com contorno azul.
+  // A seleção usa a cor escolhida no RGB; azul vira branco para continuar visível.
+  displayTFT.drawRect(x, y, 10, 11, ST77XX_BLACK);
+  uint16_t corContorno = displayTFT.color565(37, 139, 255); // azul padrão
+  if (ativo) {
+    if (corTextoAtual == MARCA_AZUL) corContorno = ST77XX_WHITE;
+    else if (corTextoAtual == MARCA_VERMELHO || corTextoAtual == MARCA_VERDE)
+      corContorno = corMarcadorTFT(corTextoAtual);
+    else corContorno = ST77XX_WHITE;
+  }
+  displayTFT.drawRect(x, y, 10, 11, corContorno);
   const __FlashStringHelper *corLetra = F("#FFFFFF");
   if (row == 2 && col == 0) {
     textoCentro(x + 5, y + 2, 1, corLetra, tecladoSimbolos ? F("A") : F("?"));
@@ -1523,6 +1535,7 @@ void setup() {
   pinMode(JOY_X, INPUT);
   pinMode(JOY_Y, INPUT);
   pinMode(JOY_SW, INPUT_PULLUP);
+  pinMode(BOTAO_EXTRA, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
   pinMode(TFT_CS, OUTPUT);
