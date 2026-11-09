@@ -1073,7 +1073,7 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   int y = 55 + row * 13; // Posição vertical original do teclado.
   // A camada/fundo azul fica vermelha quando selecionada; a letra continua preta.
   retanguloArredondado(x, y, 10, 11, 2, ativo ? F("#FF3030") : F("#258BFF"));
-  const __FlashStringHelper *corLetra = F("#000000");
+  const __FlashStringHelper *corLetra = F("#FFFFFF");
   if (row == 2 && col == 0) {
     textoCentro(x + 5, y + 2, 1, corLetra, tecladoSimbolos ? F("A") : F("?"));
     return;
