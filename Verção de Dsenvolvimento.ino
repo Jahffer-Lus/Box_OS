@@ -1330,7 +1330,7 @@ void selecionarConfig() {
 }
 
 void atualizarNavegacao() {
-  const unsigned int intervalosSelecao[3] = { 45, 110, 260 };
+  const unsigned int intervalosSelecao[3] = { 260, 110, 45 };
   if (millis() - ultimoMovimento < intervalosSelecao[velocidadeSelecao]) return;
 
   if (tela == FILE_EDIT) {
