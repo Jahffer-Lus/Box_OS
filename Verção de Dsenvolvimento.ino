@@ -1028,18 +1028,18 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
     const int larguras[TOTAL_ACOES_TECLADO] = {23,24,24,24,23};
     const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
     int x=posicoes[col], largura=larguras[col];
-    retanguloArredondado(x,113,largura,12,2,F("#258BFF"));
-    uint16_t cor = ativo ? displayTFT.color565(255, 45, 45) : ST77XX_BLACK;
-    desenharTextoTFT(x+2,116,1,cor,rotulos[col],false);
+    // A camada/fundo da tecla fica vermelha quando selecionada; texto permanece preto.
+    retanguloArredondado(x,113,largura,12,2,ativo ? F("#FF3030") : F("#258BFF"));
+    desenharTextoTFT(x+2,116,1,ST77XX_BLACK,rotulos[col],false);
     return;
   }
 
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
-  // Fundo azul; somente a letra da tecla selecionada fica vermelha.
-  retanguloArredondado(x, y, 10, 11, 2, F("#258BFF"));
-  const __FlashStringHelper *corLetra = ativo ? F("#FF3030") : F("#000000");
+  // A camada/fundo azul fica vermelha quando selecionada; a letra continua preta.
+  retanguloArredondado(x, y, 10, 11, 2, ativo ? F("#FF3030") : F("#258BFF"));
+  const __FlashStringHelper *corLetra = F("#000000");
   if (row == 2 && col == 0) {
     textoCentro(x + 5, y + 2, 1, corLetra, tecladoSimbolos ? F("A") : F("?"));
     return;
