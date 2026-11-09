@@ -1018,7 +1018,7 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   int y = 55 + row * 13; // Posição vertical original do teclado.
   retanguloArredondado(x, y, 10, 11, 2, ativo ? CYAN : DARK);
   char etiqueta[2] = { lerTeclaQwerty(row, col), '\0' };
-  textoCentro(x + 5, y + 6, 1, ativo ? CYAN : WHITE, etiqueta);
+  textoCentro(x + 5, y + 4, 1, ativo ? CYAN : WHITE, etiqueta);
 }
 
 void mostrarEditorArquivo() {
