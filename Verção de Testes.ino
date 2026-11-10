@@ -713,21 +713,31 @@ void mostrarConfig() {
   mostrarTela();
 }
 
+void desenharCampoDataHora(byte i) {
+  if (i >= 6) return;
+  int x = 5 + (i % 3) * 42;
+  int y = 43 + (i / 3) * 35;
+  bool ativo = (i == rtcCampoEdicao);
+  const char *rotulos[6] = {"DIA", "MES", "ANO", "HORA", "MIN", "SEG"};
+
+  // Apaga somente a caixa deste campo, preservando todo o restante da tela.
+  displayTFT.fillRect(x - 2, y - 3, 38, 33, ST77XX_BLACK);
+  texto(x, y, 1, ativo ? CYAN : WHITE, rotulos[i]);
+
+  char valor[5];
+  if (i == 2) snprintf(valor, sizeof(valor), "%02u", rtcEdicao[i]);
+  else snprintf(valor, sizeof(valor), "%02u", rtcEdicao[i]);
+  texto(x, y + 13, 2, ativo ? CYAN : WHITE, valor);
+
+  if (ativo) displayTFT.drawRoundRect(x - 2, y - 3, 36, 31, 3, corTFT(CYAN));
+}
+
 void mostrarAjusteDataHora() {
   tela = AJUSTAR_DATA_HORA;
   limpar();
   texto(5, 5, 2, CYAN, F("DATA E HORA"));
   linha(5, 23, 123, 23, GRAY);
-  const char *rotulos[6] = {"DIA", "MES", "ANO", "HORA", "MIN", "SEG"};
-  for (byte i = 0; i < 6; i++) {
-    int x = 5 + (i % 3) * 42;
-    int y = 43 + (i / 3) * 35;
-    texto(x, y, 1, i == rtcCampoEdicao ? CYAN : WHITE, rotulos[i]);
-    char valor[5];
-    snprintf(valor, sizeof(valor), "%02u", rtcEdicao[i]);
-    texto(x, y + 13, 2, i == rtcCampoEdicao ? CYAN : WHITE, valor);
-    if (i == rtcCampoEdicao) displayTFT.drawRoundRect(x - 2, y - 3, 36, 31, 3, corTFT(CYAN));
-  }
+  for (byte i = 0; i < 6; i++) desenharCampoDataHora(i);
   texto(5, 119, 1, GRAY, F("SW: SALVAR"));
   mostrarTela();
 }
@@ -753,11 +763,15 @@ void ajustarCampoDataHora(int direcao) {
   if (direcao > 0) v = (v >= maximo) ? minimo : v + 1;
   else v = (v <= minimo) ? maximo : v - 1;
   rtcEdicao[rtcCampoEdicao] = v;
+  byte diaAnterior = rtcEdicao[0];
   byte dias = 31;
   if (rtcEdicao[1] == 4 || rtcEdicao[1] == 6 || rtcEdicao[1] == 9 || rtcEdicao[1] == 11) dias = 30;
   if (rtcEdicao[1] == 2) dias = ((rtcEdicao[2] % 4) == 0) ? 29 : 28;
   if (rtcEdicao[0] > dias) rtcEdicao[0] = dias;
-  mostrarAjusteDataHora();
+
+  // Atualiza só o número alterado; se o mês/ano limitar o dia, atualiza também o dia.
+  desenharCampoDataHora(rtcCampoEdicao);
+  if (rtcEdicao[0] != diaAnterior && rtcCampoEdicao != 0) desenharCampoDataHora(0);
 }
 
 void salvarDataHoraRTC() {
@@ -1735,8 +1749,11 @@ void atualizarNavegacao() {
     ultimoMovimento = millis();
     somNavegacao();
     if (dx != 0) {
+      byte campoAnterior = rtcCampoEdicao;
       rtcCampoEdicao = (rtcCampoEdicao + 6 + (dx > 0 ? 1 : -1)) % 6;
-      mostrarAjusteDataHora();
+      // Mantém os valores intactos e redesenha apenas os dois campos envolvidos.
+      desenharCampoDataHora(campoAnterior);
+      desenharCampoDataHora(rtcCampoEdicao);
     } else ajustarCampoDataHora(dy > 0 ? 1 : -1);
     return;
   }
