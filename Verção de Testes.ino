@@ -691,18 +691,13 @@ void mostrarMenu() {
 
 // Redesenha somente o texto e o destaque de uma opção da configuração.
 void desenharItemConfig(byte item) {
-  if (item < configPrimeira || item >= TOTAL_CONFIG) return;
-  byte linhaMenu = item - configPrimeira;
-  if (linhaMenu >= 5) return;
-
-  int y = 31 + linhaMenu * 20;
+  if (item >= TOTAL_CONFIG_POR_PAGINA[configPagina]) return;
+  int y = 34 + item * 24;
   bool ativo = (item == configSelecionada);
-
-  displayTFT.fillRect(4, y - 1, 120, 12, ST77XX_BLACK);
-  texto(7, y, 1, ativo ? CYAN : WHITE, nomeOpcaoConfig(item));
-
+  displayTFT.fillRect(4, y - 2, 120, 17, ST77XX_BLACK);
+  texto(7, y, 1, ativo ? CYAN : WHITE, nomeOpcaoConfig(configPagina, item));
   uint16_t cor = ativo ? corTFT(CYAN) : ST77XX_BLACK;
-  displayTFT.drawFastHLine(4, y - 3, 120, cor);
+  displayTFT.drawFastHLine(4, y - 4, 120, cor);
   displayTFT.drawFastHLine(4, y + 15, 120, cor);
 }
 
@@ -710,17 +705,75 @@ void mostrarConfig() {
   tela = CONFIG;
   limpar();
   texto(5, 5, 3, CYAN, F("CONFIG"));
-  linha(5, 23, 123, 23, GRAY);
-
-  if (configSelecionada < configPrimeira) configPrimeira = configSelecionada;
-  if (configSelecionada >= configPrimeira + 5) configPrimeira = configSelecionada - 4;
-
-  for (byte linhaMenu = 0; linhaMenu < 5; linhaMenu++) {
-    byte item = configPrimeira + linhaMenu;
-    if (item >= TOTAL_CONFIG) break;
-    desenharItemConfig(item);
-  }
+  char pagina[12];
+  snprintf_P(pagina, sizeof(pagina), PSTR("PAG %u/2"), configPagina + 1);
+  texto(83, 9, 1, GRAY, pagina);
+  linha(5, 25, 123, 25, GRAY);
+  for (byte i = 0; i < TOTAL_CONFIG_POR_PAGINA[configPagina]; i++) desenharItemConfig(i);
   mostrarTela();
+}
+
+void mostrarAjusteDataHora() {
+  tela = AJUSTAR_DATA_HORA;
+  limpar();
+  texto(5, 5, 2, CYAN, F("DATA E HORA"));
+  linha(5, 23, 123, 23, GRAY);
+  const char *rotulos[6] = {"DIA", "MES", "ANO", "HORA", "MIN", "SEG"};
+  for (byte i = 0; i < 6; i++) {
+    int x = 5 + (i % 3) * 42;
+    int y = 43 + (i / 3) * 35;
+    texto(x, y, 1, i == rtcCampoEdicao ? CYAN : WHITE, rotulos[i]);
+    char valor[5];
+    snprintf(valor, sizeof(valor), "%02u", rtcEdicao[i]);
+    texto(x, y + 13, 2, i == rtcCampoEdicao ? CYAN : WHITE, valor);
+    if (i == rtcCampoEdicao) displayTFT.drawRoundRect(x - 2, y - 3, 36, 31, 3, corTFT(CYAN));
+  }
+  texto(5, 119, 1, GRAY, F("SW: SALVAR"));
+  mostrarTela();
+}
+
+void iniciarAjusteDataHora() {
+  byte seg, minu, hora, dia, mes, ano;
+  if (!rtcLerDataHora(seg, minu, hora, dia, mes, ano)) {
+    dia = 1; mes = 1; ano = 26; hora = 12; minu = 0; seg = 0;
+  }
+  rtcEdicao[0] = dia; rtcEdicao[1] = mes; rtcEdicao[2] = ano;
+  rtcEdicao[3] = hora; rtcEdicao[4] = minu; rtcEdicao[5] = seg;
+  rtcCampoEdicao = 0;
+  mostrarAjusteDataHora();
+}
+
+void ajustarCampoDataHora(int direcao) {
+  byte v = rtcEdicao[rtcCampoEdicao];
+  byte minimo = 0, maximo = 59;
+  if (rtcCampoEdicao == 0) { minimo = 1; maximo = 31; }
+  else if (rtcCampoEdicao == 1) { minimo = 1; maximo = 12; }
+  else if (rtcCampoEdicao == 2) { minimo = 0; maximo = 99; }
+  else if (rtcCampoEdicao == 3) { minimo = 0; maximo = 23; }
+  if (direcao > 0) v = (v >= maximo) ? minimo : v + 1;
+  else v = (v <= minimo) ? maximo : v - 1;
+  rtcEdicao[rtcCampoEdicao] = v;
+  byte dias = 31;
+  if (rtcEdicao[1] == 4 || rtcEdicao[1] == 6 || rtcEdicao[1] == 9 || rtcEdicao[1] == 11) dias = 30;
+  if (rtcEdicao[1] == 2) dias = ((rtcEdicao[2] % 4) == 0) ? 29 : 28;
+  if (rtcEdicao[0] > dias) rtcEdicao[0] = dias;
+  mostrarAjusteDataHora();
+}
+
+void salvarDataHoraRTC() {
+  rtcDesproteger();
+  rtcEscreverRegistrador(0x80, rtcParaBCD(rtcEdicao[5]));
+  rtcEscreverRegistrador(0x82, rtcParaBCD(rtcEdicao[4]));
+  rtcEscreverRegistrador(0x84, rtcParaBCD(rtcEdicao[3]));
+  rtcEscreverRegistrador(0x86, rtcParaBCD(rtcEdicao[0]));
+  rtcEscreverRegistrador(0x88, rtcParaBCD(rtcEdicao[1]));
+  rtcEscreverRegistrador(0x8A, rtcParaBCD(1));
+  rtcEscreverRegistrador(0x8C, rtcParaBCD(rtcEdicao[2]));
+  rtcEscreverRegistrador(0x8E, 0x00);
+  rtcUltimoSegundo = rtcUltimoMinuto = rtcUltimaHora = 255;
+  rtcUltimoDia = rtcUltimoMes = rtcUltimoAno = 255;
+  somSucesso();
+  mostrarConfig();
 }
 
 void mostrarAjusteVelocidade() {
@@ -1535,13 +1588,15 @@ int obstaculoX = 120;
 int pontos = 0;
 
 void selecionarConfig() {
-  switch (configSelecionada) {
-    case 0: mostrarAjusteFonte(); break;
-    case 1: mostrarAjusteRotacao(); break;
-    case 2: mostrarAjusteVelocidade(); break;
-    case 3: desligarBOX(); break;
-    case 4: reiniciarBOX(); break;
-    default: mostrarMenu(); break;
+  if (configPagina == 0) {
+    if (configSelecionada == 0) mostrarAjusteFonte();
+    else if (configSelecionada == 1) mostrarAjusteRotacao();
+    else mostrarAjusteVelocidade();
+  } else {
+    if (configSelecionada == 0) iniciarAjusteDataHora();
+    else if (configSelecionada == 1) desligarBOX();
+    else if (configSelecionada == 2) reiniciarBOX();
+    else mostrarMenu();
   }
 }
 
