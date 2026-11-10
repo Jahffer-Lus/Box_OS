@@ -270,7 +270,8 @@ void somInicializacao() {
   delay(25);
   bipPassivo(1100, 65);
   delay(25);
-  bipPassivo(1480, 150);
+  // Nota final mais baixa e curta para evitar o estalo agudo.
+  bipPassivo(880, 65);
 }
 
 byte ajustarTamanhoFonte(byte tamanhoBase) {
@@ -1327,10 +1328,9 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
     const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
     int x = posicoes[col], largura = larguras[col];
 
-    // A selecao permanece azul para economizar memoria e evitar variacoes.
-    // Somente o contorno da tecla RGB indica a cor de texto atualmente escolhida.
-    uint16_t corContorno = ST77XX_WHITE;
-    if (col == ACAO_RGB) {
+    // A caixa da tecla selecionada fica branca; as demais ficam azul-ciano.
+    uint16_t corContorno = ativo ? ST77XX_WHITE : corTFT(CYAN);
+    if (col == ACAO_RGB && !ativo) {
       corContorno = corMarcadorTFT(corTextoAtual);
     }
     displayTFT.drawRoundRect(x, 113, largura, 12, 2, corContorno);
@@ -1342,10 +1342,9 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
-  // Todas as teclas de caracteres mantem o mesmo contorno azul fixo.
-  // A cor escolhida aparece somente no contorno da tecla RGB.
+  // A caixa da tecla selecionada fica branca; as demais ficam azul-ciano.
   displayTFT.drawRect(x, y, 10, 11, ST77XX_BLACK);
-  uint16_t corContorno = ST77XX_WHITE;
+  uint16_t corContorno = ativo ? ST77XX_WHITE : corTFT(CYAN);
   displayTFT.drawRect(x, y, 10, 11, corContorno);
   const __FlashStringHelper *corLetra = F("#FFFFFF");
   if (row == 2 && col == 0) {
