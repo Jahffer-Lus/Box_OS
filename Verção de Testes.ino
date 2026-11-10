@@ -263,14 +263,14 @@ void somApagar() {
 }
 
 void somInicializacao() {
-  // Sequencia de inicializacao mais suave: quatro notas sem o apito estridente final.
+  // Pequena sequencia ascendente de inicializacao do BOX OS.
   bipPassivo(660, 65);
   delay(25);
   bipPassivo(880, 65);
   delay(25);
   bipPassivo(1100, 65);
   delay(25);
-  bipPassivo(880, 65);
+  bipPassivo(1480, 150);
 }
 
 byte ajustarTamanhoFonte(byte tamanhoBase) {
