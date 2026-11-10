@@ -1328,8 +1328,8 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
     const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
     int x = posicoes[col], largura = larguras[col];
 
-    // A caixa da tecla selecionada fica branca; as demais ficam azul-ciano.
-    uint16_t corContorno = ativo ? ST77XX_WHITE : corTFT(CYAN);
+    // A caixa da tecla selecionada fica branca; as demais ficam azul-escuro.
+    uint16_t corContorno = ativo ? ST77XX_WHITE : displayTFT.color565(0, 48, 110);
     if (col == ACAO_RGB && !ativo) {
       corContorno = corMarcadorTFT(corTextoAtual);
     }
@@ -1342,9 +1342,9 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
-  // A caixa da tecla selecionada fica branca; as demais ficam azul-ciano.
+  // A caixa da tecla selecionada fica branca; as demais ficam azul-escuro.
   displayTFT.drawRect(x, y, 10, 11, ST77XX_BLACK);
-  uint16_t corContorno = ativo ? ST77XX_WHITE : corTFT(CYAN);
+  uint16_t corContorno = ativo ? ST77XX_WHITE : displayTFT.color565(0, 48, 110);
   displayTFT.drawRect(x, y, 10, 11, corContorno);
   const __FlashStringHelper *corLetra = F("#FFFFFF");
   if (row == 2 && col == 0) {
