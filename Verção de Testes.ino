@@ -229,48 +229,48 @@ void carregarConfiguracoes() {
 }
 
 
-// Buzzer ATIVO: nao reproduz frequencias; usa apenas pulsos HIGH/LOW.
-void bipAtivo(unsigned int duracao) {
-  digitalWrite(BUZZER_PIN, HIGH);
+// Buzzer PASSIVO: usa tone() para reproduzir frequencias diferentes.
+void bipPassivo(unsigned int frequencia, unsigned int duracao) {
+  tone(BUZZER_PIN, frequencia, duracao);
   delay(duracao);
-  digitalWrite(BUZZER_PIN, LOW);
+  noTone(BUZZER_PIN);
 }
 
 void somClique() {
-  bipAtivo(35);
+  bipPassivo(1800, 35);
 }
 
 void somNavegacao() {
-  bipAtivo(22);
+  bipPassivo(1450, 22);
 }
 
 void somSucesso() {
-  bipAtivo(75);
-  delay(85);
-  bipAtivo(95);
+  bipPassivo(880, 75);
+  delay(35);
+  bipPassivo(1320, 95);
 }
 
 void somErro() {
-  bipAtivo(180);
-  delay(70);
-  bipAtivo(180);
+  bipPassivo(330, 180);
+  delay(45);
+  bipPassivo(220, 180);
 }
 
 void somApagar() {
-  bipAtivo(65);
-  delay(75);
-  bipAtivo(100);
+  bipPassivo(1050, 65);
+  delay(35);
+  bipPassivo(650, 100);
 }
 
 void somInicializacao() {
-  // Sequencia de pulsos: buzzer ativo nao permite variar o tom.
-  bipAtivo(65);
-  delay(45);
-  bipAtivo(65);
-  delay(45);
-  bipAtivo(65);
-  delay(45);
-  bipAtivo(150);
+  // Pequena sequencia ascendente de inicializacao do BOX OS.
+  bipPassivo(660, 65);
+  delay(25);
+  bipPassivo(880, 65);
+  delay(25);
+  bipPassivo(1100, 65);
+  delay(25);
+  bipPassivo(1480, 150);
 }
 
 byte ajustarTamanhoFonte(byte tamanhoBase) {
