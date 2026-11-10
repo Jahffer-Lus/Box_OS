@@ -1329,7 +1329,7 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
 
     // A selecao permanece azul para economizar memoria e evitar variacoes.
     // Somente o contorno da tecla RGB indica a cor de texto atualmente escolhida.
-    uint16_t corContorno = displayTFT.color565(37, 139, 255);
+    uint16_t corContorno = ST77XX_WHITE;
     if (col == ACAO_RGB) {
       corContorno = corMarcadorTFT(corTextoAtual);
     }
@@ -1345,7 +1345,7 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   // Todas as teclas de caracteres mantem o mesmo contorno azul fixo.
   // A cor escolhida aparece somente no contorno da tecla RGB.
   displayTFT.drawRect(x, y, 10, 11, ST77XX_BLACK);
-  uint16_t corContorno = displayTFT.color565(37, 139, 255);
+  uint16_t corContorno = ST77XX_WHITE;
   displayTFT.drawRect(x, y, 10, 11, corContorno);
   const __FlashStringHelper *corLetra = F("#FFFFFF");
   if (row == 2 && col == 0) {
