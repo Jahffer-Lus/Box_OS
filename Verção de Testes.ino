@@ -1709,14 +1709,43 @@ void atualizarNavegacao() {
   }
 
   int direcao;
+  if (tela == CONFIG) {
+    int dx = lerDirecaoX();
+    int dy = lerDirecaoY();
+    if (dx == 0 && dy == 0) return;
+    ultimoMovimento = millis();
+    somNavegacao();
+    if (dx != 0) {
+      configPagina = (configPagina + TOTAL_CONFIG_PAGINAS + (dx > 0 ? 1 : -1)) % TOTAL_CONFIG_PAGINAS;
+      configSelecionada = 0;
+      mostrarConfig();
+    } else {
+      byte anterior = configSelecionada;
+      byte total = TOTAL_CONFIG_POR_PAGINA[configPagina];
+      configSelecionada = (configSelecionada + total + (dy > 0 ? 1 : -1)) % total;
+      desenharItemConfig(anterior);
+      desenharItemConfig(configSelecionada);
+    }
+    return;
+  }
+  if (tela == AJUSTAR_DATA_HORA) {
+    int dx = lerDirecaoX();
+    int dy = lerDirecaoY();
+    if (dx == 0 && dy == 0) return;
+    ultimoMovimento = millis();
+    somNavegacao();
+    if (dx != 0) {
+      rtcCampoEdicao = (rtcCampoEdicao + 6 + (dx > 0 ? 1 : -1)) % 6;
+      mostrarAjusteDataHora();
+    } else ajustarCampoDataHora(dy > 0 ? 1 : -1);
+    return;
+  }
   if (tela == AJUSTAR_FONTE || tela == AJUSTAR_ROTACAO || tela == AJUSTAR_VELOCIDADE) {
     direcao = lerDirecaoX();
-    if (direcao == 0) return;
   } else {
     direcao = lerDirecao();
-    if (direcao == 0) return;
   }
-
+  if (direcao == 0) return;
   ultimoMovimento = millis();
   somNavegacao();
 
@@ -1727,15 +1756,6 @@ void atualizarNavegacao() {
     // Atualiza somente a opção que perdeu o foco e a que recebeu o foco.
     desenharItemMenu(anterior);
     desenharItemMenu(selecionado);
-    // Atualizacao parcial: nao reenviar DISPON ao controlador.
-  }
-  else if (tela == CONFIG) {
-    byte anterior = configSelecionada;
-    configSelecionada = (configSelecionada + TOTAL_CONFIG + direcao) % TOTAL_CONFIG;
-
-    // Atualiza somente a opção antiga e a nova.
-    desenharItemConfig(anterior);
-    desenharItemConfig(configSelecionada);
     // Atualizacao parcial: nao reenviar DISPON ao controlador.
   }
   else if (tela == AJUSTAR_FONTE) {
@@ -1772,6 +1792,9 @@ void atualizarBotao() {
     case AJUSTAR_ROTACAO:
     case AJUSTAR_VELOCIDADE:
       mostrarConfig();
+      break;
+    case AJUSTAR_DATA_HORA:
+      salvarDataHoraRTC();
       break;
     case FILE_LIST:
       abrirArquivoSelecionado();
