@@ -29,7 +29,8 @@ Adafruit_ST7735 displayTFT(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 #define RED F("#F04B4B")
 
 const byte TOTAL_APPS = 2;
-const byte TOTAL_CONFIG = 6;
+const byte TOTAL_CONFIG_PAGINAS = 2;
+const byte TOTAL_CONFIG_POR_PAGINA[2] = { 3, 4 };
 
 const __FlashStringHelper *nomeApp(byte indice) {
   switch (indice) {
@@ -38,17 +39,21 @@ const __FlashStringHelper *nomeApp(byte indice) {
   }
 }
 
-const __FlashStringHelper *nomeOpcaoConfig(byte indice) {
+const __FlashStringHelper *nomeOpcaoConfig(byte pagina, byte indice) {
+  if (pagina == 0) {
+    switch (indice) {
+      case 0: return F("Tamanho da Fonte");
+      case 1: return F("Rotacao da Tela");
+      default: return F("Velocidade da Selecao");
+    }
+  }
   switch (indice) {
-    case 0: return F("Tamanho da Fonte");
-    case 1: return F("Rotacao da Tela");
-    case 2: return F("Velocidade da Selecao");
-    case 3: return F("Desligar");
-    case 4: return F("Reiniciar");
+    case 0: return F("Data e Hora");
+    case 1: return F("Desligar");
+    case 2: return F("Reiniciar");
     default: return F("Voltar");
   }
 }
-
 
 enum Screen {
   MENU,
@@ -56,6 +61,7 @@ enum Screen {
   AJUSTAR_FONTE,
   AJUSTAR_ROTACAO,
   AJUSTAR_VELOCIDADE,
+  AJUSTAR_DATA_HORA,
   FILE_LIST,
   FILE_VIEW,
   FILE_EDIT
@@ -65,6 +71,9 @@ Screen tela = MENU;
 
 byte selecionado = 0;
 byte configSelecionada = 0;
+byte configPagina = 0;
+byte rtcCampoEdicao = 0;
+byte rtcEdicao[6] = { 1, 1, 26, 12, 0, 0 };
 
 byte tamanhoFonte = 1;
 byte rotacaoTela = 3;
