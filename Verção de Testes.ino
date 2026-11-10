@@ -1327,14 +1327,11 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
     const char *rotulos[TOTAL_ACOES_TECLADO] = {"DEL","ESP","ENT","RGB","OK"};
     int x = posicoes[col], largura = larguras[col];
 
-    // Teclas de acao vazadas, iguais as teclas de caracteres.
-    // O contorno fica azul normalmente e acompanha a cor de texto ao selecionar.
+    // A selecao permanece azul para economizar memoria e evitar variacoes.
+    // Somente o contorno da tecla RGB indica a cor de texto atualmente escolhida.
     uint16_t corContorno = displayTFT.color565(37, 139, 255);
-    if (ativo) {
-      if (corTextoAtual == MARCA_VERMELHO || corTextoAtual == MARCA_VERDE)
-        corContorno = corMarcadorTFT(corTextoAtual);
-      else
-        corContorno = ST77XX_WHITE;
+    if (col == ACAO_RGB) {
+      corContorno = corMarcadorTFT(corTextoAtual);
     }
     displayTFT.drawRoundRect(x, 113, largura, 12, 2, corContorno);
     desenharTextoTFT(x + (largura - (strlen(rotulos[col]) * 6)) / 2, 116, 1,
@@ -1345,16 +1342,10 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
   int y = 55 + row * 13; // Posição vertical original do teclado.
-  // Teclas ficam vazadas, somente com contorno azul.
-  // A seleção usa a cor escolhida no RGB; azul vira branco para continuar visível.
+  // Todas as teclas de caracteres mantem o mesmo contorno azul fixo.
+  // A cor escolhida aparece somente no contorno da tecla RGB.
   displayTFT.drawRect(x, y, 10, 11, ST77XX_BLACK);
-  uint16_t corContorno = displayTFT.color565(37, 139, 255); // azul padrão
-  if (ativo) {
-    if (corTextoAtual == MARCA_AZUL) corContorno = ST77XX_WHITE;
-    else if (corTextoAtual == MARCA_VERMELHO || corTextoAtual == MARCA_VERDE)
-      corContorno = corMarcadorTFT(corTextoAtual);
-    else corContorno = ST77XX_WHITE;
-  }
+  uint16_t corContorno = displayTFT.color565(37, 139, 255);
   displayTFT.drawRect(x, y, 10, 11, corContorno);
   const __FlashStringHelper *corLetra = F("#FFFFFF");
   if (row == 2 && col == 0) {
