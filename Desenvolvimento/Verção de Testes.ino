@@ -172,7 +172,7 @@ void drawHeader(const char* title) {
   tft.setTextColor(C_WHITE);
   int16_t x1, y1; uint16_t w, h;
   tft.getTextBounds(title, 0, 0, &x1, &y1, &w, &h);
-  tft.setCursor(153 - w, 7);
+  tft.setCursor(121 - w, 7);
   tft.print(title);
 }
 
@@ -202,26 +202,26 @@ void drawMenu() {
     if (app >= APP_COUNT) break;
     uint8_t col = i % 2;
     uint8_t row = i / 2;
-    int16_t x = 5 + col * 78;
+    int16_t x = 3 + col * 62;
     int16_t y = 29 + row * 57;
     bool selected = (app == selectedApp);
-    tft.fillRoundRect(x, y, 72, 50, 7, selected ? C_PANEL : bgColor());
-    tft.drawRoundRect(x, y, 72, 50, 7, selected ? accentColor() : C_DARK);
+    tft.fillRoundRect(x, y, 58, 50, 7, selected ? C_PANEL : bgColor());
+    tft.drawRoundRect(x, y, 58, 50, 7, selected ? accentColor() : C_DARK);
     tft.setTextColor(selected ? accentColor() : C_WHITE);
     tft.setTextSize(2);
-    tft.setCursor(x + 29, y + 7);
+    tft.setCursor(x + 23, y + 7);
     tft.print(i + 1);
     tft.setTextSize(1);
     tft.setTextColor(C_WHITE);
-    int16_t tx = x + 4;
-    if (strlen(apps[app]) > 10) tx = x + 1;
+    int16_t tx = x + 3;
+    if (strlen(apps[app]) > 8) tx = x + 1;
     tft.setCursor(tx, y + 32);
     tft.print(apps[app]);
   }
   tft.setTextColor(C_GRAY);
   tft.setCursor(8, 145);
   tft.print("SW: abrir   CIMA/BAIXO: paginas");
-  tft.setCursor(132, 7);
+  tft.setCursor(112, 7);
   tft.print(menuPage + 1);
 }
 
@@ -366,11 +366,11 @@ void setup() {
   digitalWrite(BUZZER_PIN, LOW);
 
   rtcBegin();
-  rtcReady = rtcReadTime(*(new uint8_t), *(new uint8_t), *(new uint8_t),
-                         *(new uint8_t), *(new uint8_t), *(new uint8_t));
+  uint8_t rs, rm, rh, rd, rmo, ry;
+  rtcReady = rtcReadTime(rs, rm, rh, rd, rmo, ry);
 
   tft.initR(INITR_BLACKTAB);
-  tft.setRotation(1); // 160 x 128
+  tft.setRotation(0); // 128 x 160
   tft.setTextWrap(false);
   drawStartup();
 
