@@ -7,12 +7,17 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
 
+// BOX OS 1.6 - PINAGEM ATUAL DO PROJETO
+// TFT ST7735: CS D13, DC D11, RST D12, MOSI D10, SCLK D9
+// Joystick: VRX A0, VRY A1, SW D7
+// Buzzer ativo: sinal D6 (GND no negativo)
+// Sem modulo RTC e sem funcao de relogio.
 #define JOY_X A0
 #define JOY_Y A1
 #define JOY_SW 7
 #define BUZZER_PIN 6
 
-#define TFT_CS 8
+#define TFT_CS 13
 #define TFT_DC 11
 #define TFT_RST 12
 #define TFT_MOSI 10
