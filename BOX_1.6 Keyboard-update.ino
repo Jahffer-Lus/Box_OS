@@ -1037,14 +1037,22 @@ void desenharItemTeclado(byte row, byte col, bool ativo) {
 
   if (row >= TECLADO_LINHAS || col >= quantidadeTeclasQwerty(row)) return;
   int x = inicioLinhaQwerty(row) + col * 12;
-  int y = 55 + row * 13; // Posição vertical original do teclado.
-  retanguloArredondado(x, y, 10, 11, 2, CYAN);
+  int y = 55 + row * 13;
+
+  // Teclas sem preenchimento: somente a letra sobre o fundo preto.
+  // A tecla selecionada recebe uma moldura branca com cantos arredondados.
+  displayTFT.fillRoundRect(x, y, 10, 11, 2, ST77XX_BLACK);
+
   if (row == 2 && col == 0) {
-    textoCentro(x + 5, y + 2, 1, F("#000000"), tecladoSimbolos ? F("A") : F("?"));
-    return;
+    textoCentro(x + 5, y + 2, 1, WHITE, tecladoSimbolos ? F("A") : F("?"));
+  } else {
+    char etiqueta[2] = { lerTeclaQwerty(row, col), '\0' };
+    textoCentro(x + 5, y + 2, 1, WHITE, etiqueta);
   }
-  char etiqueta[2] = { lerTeclaQwerty(row, col), '\0' };
-  textoCentro(x + 5, y + 2, 1, F("#000000"), etiqueta);
+
+  if (ativo) {
+    displayTFT.drawRoundRect(x, y, 10, 11, 2, ST77XX_WHITE);
+  }
 }
 
 void mostrarEditorArquivo() {
